@@ -29,7 +29,11 @@ class AccountsApi {
 
     private fun parseCurrentAccount(body: String): CurrentAccount {
         val json = org.json.JSONObject(body)
+        val baseUrl = "https://api.solian.app"
         val profile = json.optJSONObject("profile")
+        val pictureId = profile?.optJSONObject("picture")?.optString("id")
+            ?.takeIf { it.isNotBlank() }
+        val pictureUrl = pictureId?.let { "$baseUrl/drive/files/$it" }
 
         return CurrentAccount(
             id = json.optString("id"),
@@ -37,6 +41,7 @@ class AccountsApi {
             nick = json.optString("nick"),
             language = json.optString("language"),
             bio = profile?.optString("bio").orEmpty(),
+            pictureUrl = pictureUrl,
         )
     }
 

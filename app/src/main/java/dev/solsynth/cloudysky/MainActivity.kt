@@ -7,6 +7,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,10 +29,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -32,7 +41,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.solsynth.cloudysky.auth.AuthRepository
 import dev.solsynth.cloudysky.auth.CurrentAccount
+import dev.solsynth.cloudysky.notifications.NotificationController
+import dev.solsynth.cloudysky.notifications.NotificationListScreen
+import dev.solsynth.cloudysky.notifications.NotificationRepository
+import dev.solsynth.cloudysky.settings.SettingsScreen
 import dev.solsynth.cloudysky.ui.theme.CloudySkyTheme
+import kotlinx.coroutines.launch
+
+private enum class AppScreen {
+    Notifications,
+    Settings,
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,7 +61,13 @@ class MainActivity : ComponentActivity() {
             CloudySkyTheme {
                 val context = LocalContext.current
                 val authRepository = remember { AuthRepository(context) }
+                val notificationRepository = remember { NotificationRepository(authRepository) }
+                val coroutineScope = rememberCoroutineScope()
+                val notificationController = remember { NotificationController(notificationRepository, coroutineScope) }
                 val authState by authRepository.authState.collectAsState()
+                val notificationState by notificationController.uiState.collectAsState()
+                var screen by remember { mutableStateOf(AppScreen.Notifications) }
+                val scope = rememberCoroutineScope()
                 val launcher = rememberLauncherForActivityResult(StartActivityForResult()) { result ->
                     Log.d(TAG, "auth launcher returned: hasData=${result.data != null}")
                     authRepository.handleAuthorizationResult(result.data)
@@ -54,6 +79,8 @@ class MainActivity : ComponentActivity() {
                     Log.d(TAG, "auth state changed: authorized=${authState.isAuthorized}")
                     if (!authState.isAuthorized) {
                         currentAccount = null
+                        notificationController.clear()
+                        screen = AppScreen.Notifications
                         return@LaunchedEffect
                     }
 
@@ -61,20 +88,57 @@ class MainActivity : ComponentActivity() {
                     currentAccount = authRepository.fetchCurrentAccount()
                     loadingAccount = false
                     Log.d(TAG, "account loaded: present=${currentAccount != null}")
+                    notificationController.refresh()
                 }
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    AuthScreen(
-                        isSignedIn = authState.isAuthorized,
-                        currentAccount = currentAccount,
-                        loadingAccount = loadingAccount,
-                        onSignIn = {
-                            Log.d(TAG, "sign in clicked")
-                            launcher.launch(authRepository.createAuthorizationIntent())
+                    AnimatedContent(
+                        targetState = when {
+                            !authState.isAuthorized -> "auth"
+                            screen == AppScreen.Notifications -> "notifications"
+                            else -> "settings"
                         },
-                        onSignOut = authRepository::signOut,
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                        label = "app-screen-switch",
+                        transitionSpec = {
+                            (slideInHorizontally(animationSpec = tween(220)) { it } + fadeIn()) togetherWith
+                                (slideOutHorizontally(animationSpec = tween(220)) { -it } + fadeOut())
+                        }
+                    ) { target ->
+                        when (target) {
+                            "auth" -> AuthScreen(
+                                isSignedIn = false,
+                                currentAccount = currentAccount,
+                                loadingAccount = loadingAccount,
+                                onSignIn = {
+                                    Log.d(TAG, "sign in clicked")
+                                    launcher.launch(authRepository.createAuthorizationIntent())
+                                },
+                                onSignOut = authRepository::signOut,
+                                modifier = Modifier.padding(innerPadding)
+                            )
+                            "notifications" -> NotificationListScreen(
+                                uiState = notificationState,
+                                currentAccount = currentAccount,
+                                onRefresh = notificationController::refresh,
+                                onLoadMore = notificationController::loadMore,
+                                onSettingsClick = { screen = AppScreen.Settings },
+                                onSignOut = authRepository::signOut,
+                            )
+                            else -> SettingsScreen(
+                                currentAccount = currentAccount,
+                                isLoadingAccount = loadingAccount,
+                                onBackClick = { screen = AppScreen.Notifications },
+                                onRefreshAccount = {
+                                    scope.launch {
+                                        loadingAccount = true
+                                        currentAccount = authRepository.fetchCurrentAccount()
+                                        loadingAccount = false
+                                    }
+                                },
+                                onLogoutClick = authRepository::signOut,
+                            )
+                        }
+                    }
                 }
             }
         }

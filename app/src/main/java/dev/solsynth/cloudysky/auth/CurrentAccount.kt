@@ -6,6 +6,7 @@ data class CurrentAccount(
     val nick: String,
     val language: String,
     val bio: String,
+    val pictureUrl: String? = null,
 ) {
     val displayName: String = nick.ifBlank { name }
 }
