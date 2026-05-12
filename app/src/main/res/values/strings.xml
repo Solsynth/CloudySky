@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">CloudySky</string>
+    <string name="app_auth_redirect_scheme">cloudysky</string>
+    <string name="login">Sign in</string>
+    <string name="logout">Sign out</string>
+    <string name="auth_status_signed_out">Signed out</string>
+    <string name="auth_status_signed_in">Signed in</string>
+</resources>
