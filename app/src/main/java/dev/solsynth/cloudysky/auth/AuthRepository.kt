@@ -20,11 +20,13 @@ import net.openid.appauth.AuthState.AuthStateAction
 import net.openid.appauth.ResponseTypeValues
 import kotlin.coroutines.resume
 import dev.solsynth.cloudysky.api.AccountsApi
+import dev.solsynth.cloudysky.sop.SopStore
 
 class AuthRepository(context: Context) {
     private val appContext = context.applicationContext
     private val authService = AuthorizationService(appContext)
     private val store = AuthStateStore(appContext)
+    private val sopStore = SopStore(appContext)
     private val accountsApi = AccountsApi()
     private val clientAuthentication: ClientAuthentication? =
         AuthConfig.clientSecret.takeIf { it.isNotBlank() }?.let { ClientSecretPost(it) }
@@ -77,6 +79,7 @@ class AuthRepository(context: Context) {
         Log.d(TAG, "signOut")
         _authState.value = AuthState()
         store.clear()
+        sopStore.clearAll()
     }
 
     suspend fun accessToken(): String? = suspendCancellableCoroutine { continuation ->

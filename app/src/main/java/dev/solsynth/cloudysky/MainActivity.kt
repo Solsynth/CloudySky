@@ -1,11 +1,18 @@
 package dev.solsynth.cloudysky
 
+import android.Manifest
+import android.os.PowerManager
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
+import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
@@ -45,6 +52,9 @@ import dev.solsynth.cloudysky.notifications.NotificationController
 import dev.solsynth.cloudysky.notifications.NotificationListScreen
 import dev.solsynth.cloudysky.notifications.NotificationRepository
 import dev.solsynth.cloudysky.settings.SettingsScreen
+import dev.solsynth.cloudysky.sop.SopLaunchCoordinator
+import dev.solsynth.cloudysky.sop.SopListenerService
+import dev.solsynth.cloudysky.sop.SopRepository
 import dev.solsynth.cloudysky.ui.theme.CloudySkyTheme
 import kotlinx.coroutines.launch
 
@@ -62,15 +72,25 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 val authRepository = remember { AuthRepository(context) }
                 val notificationRepository = remember { NotificationRepository(authRepository) }
+                val sopRepository = remember { SopRepository(context) }
+                val sopLaunchCoordinator = remember { SopLaunchCoordinator(context) }
                 val coroutineScope = rememberCoroutineScope()
                 val notificationController = remember { NotificationController(notificationRepository, coroutineScope) }
                 val authState by authRepository.authState.collectAsState()
                 val notificationState by notificationController.uiState.collectAsState()
+                val sopState by sopRepository.listenerState.collectAsState()
                 var screen by remember { mutableStateOf(AppScreen.Notifications) }
                 val scope = rememberCoroutineScope()
                 val launcher = rememberLauncherForActivityResult(StartActivityForResult()) { result ->
                     Log.d(TAG, "auth launcher returned: hasData=${result.data != null}")
                     authRepository.handleAuthorizationResult(result.data)
+                }
+                val notificationPermissionLauncher = rememberLauncherForActivityResult(RequestPermission()) { granted ->
+                    Log.d(TAG, "notification permission granted=$granted")
+                }
+                val batteryOptimizationLauncher = rememberLauncherForActivityResult(StartActivityForResult()) { _ ->
+                    val powerManager = context.getSystemService(PowerManager::class.java)
+                    Log.d(TAG, "battery optimization granted=${powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true}")
                 }
                 var currentAccount by remember { mutableStateOf<CurrentAccount?>(null) }
                 var loadingAccount by remember { mutableStateOf(false) }
@@ -80,6 +100,7 @@ class MainActivity : ComponentActivity() {
                     if (!authState.isAuthorized) {
                         currentAccount = null
                         notificationController.clear()
+                        SopListenerService.stop(context)
                         screen = AppScreen.Notifications
                         return@LaunchedEffect
                     }
@@ -89,6 +110,19 @@ class MainActivity : ComponentActivity() {
                     loadingAccount = false
                     Log.d(TAG, "account loaded: present=${currentAccount != null}")
                     notificationController.refresh()
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                    if (sopRepository.currentState().enabled) {
+                        sopLaunchCoordinator.requestStart()
+                        sopLaunchCoordinator.startIfPending()
+                    }
+                }
+
+                LaunchedEffect(authState.isAuthorized, screen) {
+                    if (authState.isAuthorized) {
+                        sopLaunchCoordinator.startIfPending()
+                    }
                 }
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -127,13 +161,21 @@ class MainActivity : ComponentActivity() {
                             else -> SettingsScreen(
                                 currentAccount = currentAccount,
                                 isLoadingAccount = loadingAccount,
+                                sopState = sopState,
                                 onBackClick = { screen = AppScreen.Notifications },
-                                onRefreshAccount = {
-                                    scope.launch {
-                                        loadingAccount = true
-                                        currentAccount = authRepository.fetchCurrentAccount()
-                                        loadingAccount = false
+                                onToggleSopListener = { enabled ->
+                                    sopRepository.setEnabled(enabled)
+                                    if (enabled && authState.isAuthorized) {
+                                        sopLaunchCoordinator.requestStart()
+                                        sopLaunchCoordinator.startIfPending()
+                                    } else {
+                                        SopListenerService.stop(context)
                                     }
+                                },
+                                onOpenBatteryOptimizationSettings = {
+                                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                                        .setData(Uri.parse("package:${context.packageName}"))
+                                    batteryOptimizationLauncher.launch(intent)
                                 },
                                 onLogoutClick = authRepository::signOut,
                             )

@@ -15,7 +15,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -25,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -39,14 +39,17 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import dev.solsynth.cloudysky.auth.CurrentAccount
+import dev.solsynth.cloudysky.sop.SopListenerSnapshot
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     currentAccount: CurrentAccount?,
     isLoadingAccount: Boolean,
+    sopState: SopListenerSnapshot,
     onBackClick: () -> Unit,
-    onRefreshAccount: () -> Unit,
+    onToggleSopListener: (Boolean) -> Unit,
+    onOpenBatteryOptimizationSettings: () -> Unit,
     onLogoutClick: () -> Unit,
 ) {
     val avatarUrl = remember(currentAccount?.pictureUrl) { currentAccount?.pictureUrl }
@@ -57,11 +60,6 @@ fun SettingsScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onRefreshAccount) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh account")
                     }
                 }
             )
@@ -116,8 +114,52 @@ fun SettingsScreen(
                 }
             }
 
-            Button(onClick = onRefreshAccount, modifier = Modifier.fillMaxWidth()) {
-                Text("Refresh account")
+            Card(colors = CardDefaults.cardColors()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Always-on SOP listener", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                text = "Status: ${sopState.status.name}",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(checked = sopState.enabled, onCheckedChange = onToggleSopListener)
+                    }
+
+                    if (!sopState.isIgnoringBatteryOptimizations) {
+                        Text(
+                            text = "Disable battery optimizations so the foreground listener stays connected reliably.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Button(onClick = onOpenBatteryOptimizationSettings, modifier = Modifier.fillMaxWidth()) {
+                            Text("Disable battery optimizations")
+                        }
+                    }
+
+                    if (!sopState.hasNotificationPermission) {
+                        Text(
+                            text = "Notification permission is off, so incoming SOP events cannot be shown.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    if (!sopState.deviceId.isNullOrBlank()) {
+                        InfoRow(label = "Device ID", value = sopState.deviceId.orEmpty())
+                    }
+
+                    if (!sopState.subscriptionId.isNullOrBlank()) {
+                        InfoRow(label = "Subscription ID", value = sopState.subscriptionId.orEmpty())
+                    }
+
+                    sopState.error?.let {
+                        Text(text = it, color = MaterialTheme.colorScheme.error)
+                    }
+                }
             }
 
             TextButton(onClick = onLogoutClick, modifier = Modifier.fillMaxWidth()) {
