@@ -18,4 +18,5 @@ object AuthConfig {
     const val scopeOpenId = "openid"
     const val scopeProfile = "profile"
     const val scopeEmail = "email"
+    const val scopeChatMessagesCreate = "chat.messages.create"
 }

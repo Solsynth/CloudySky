@@ -3,6 +3,7 @@ package dev.solsynth.cloudysky.sop
 import android.util.Log
 import okhttp3.internal.http2.StreamResetException
 import dev.solsynth.cloudysky.notifications.NotificationItem
+import dev.solsynth.cloudysky.notifications.parseNotificationItem
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.sse.EventSource
@@ -57,22 +58,7 @@ class SopStreamClient(
 
     private fun parseNotification(body: String): NotificationItem? {
         return runCatching {
-            val json = JSONObject(body)
-            val meta = json.optJSONObject("meta")
-            NotificationItem(
-                id = json.optString("id"),
-                topic = json.optString("topic"),
-                title = json.optString("title"),
-                subtitle = json.optString("subtitle"),
-                content = json.optString("content"),
-                actionUri = meta?.optString("action_uri").orEmpty(),
-                priority = json.optInt("priority", 10),
-                viewedAt = json.optString("viewed_at").takeIf { it.isNotBlank() },
-                accountId = json.optString("account_id"),
-                createdAt = json.optString("created_at"),
-                updatedAt = json.optString("updated_at"),
-                deletedAt = json.optString("deleted_at").takeIf { it.isNotBlank() },
-            )
+            parseNotificationItem(JSONObject(body))
         }.getOrNull()
     }
 

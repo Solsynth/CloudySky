@@ -2,6 +2,7 @@ package dev.solsynth.cloudysky.sop
 
 import android.util.Log
 import dev.solsynth.cloudysky.notifications.NotificationItem
+import dev.solsynth.cloudysky.notifications.parseNotificationItem
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -71,22 +72,7 @@ class SopApi {
         val items = ArrayList<NotificationItem>(array.length())
 
         for (index in 0 until array.length()) {
-            val json = array.getJSONObject(index)
-            val meta = json.optJSONObject("meta")
-            items += NotificationItem(
-                id = json.optString("id"),
-                topic = json.optString("topic"),
-                title = json.optString("title"),
-                subtitle = json.optString("subtitle"),
-                content = json.optString("content"),
-                actionUri = meta?.optString("action_uri").orEmpty(),
-                priority = json.optInt("priority", 10),
-                viewedAt = json.optString("viewed_at").takeIf { it.isNotBlank() },
-                accountId = json.optString("account_id"),
-                createdAt = json.optString("created_at"),
-                updatedAt = json.optString("updated_at"),
-                deletedAt = json.optString("deleted_at").takeIf { it.isNotBlank() },
-            )
+            items += parseNotificationItem(array.getJSONObject(index))
         }
 
         return items

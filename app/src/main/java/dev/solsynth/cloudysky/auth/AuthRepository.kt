@@ -48,7 +48,8 @@ class AuthRepository(context: Context) {
             .setScopes(
                 AuthConfig.scopeOpenId,
                 AuthConfig.scopeProfile,
-                AuthConfig.scopeEmail
+                AuthConfig.scopeEmail,
+                AuthConfig.scopeChatMessagesCreate
             )
             .build()
 
