@@ -2,6 +2,7 @@ package dev.solsynth.cloudysky.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,10 +10,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -64,7 +67,7 @@ fun AboutScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             Image(
-                painter = painterResource(R.mipmap.ic_launcher),
+                painter = painterResource(R.mipmap.ic_launcher_foreground),
                 contentDescription = "CloudySky icon",
                 modifier = Modifier.size(96.dp),
             )
@@ -75,7 +78,7 @@ fun AboutScreen(
             )
 
             Text(
-                text = "Solian client for notifications, account info, and SOP streaming.",
+                text = "Official Solar Network Android push notification companion app",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -99,14 +102,40 @@ fun AboutScreen(
 
                     InfoRow(label = "Version", value = "$versionName ($versionCode)")
                     InfoRow(label = "Build", value = buildType)
+                }
+            }
 
-                    HorizontalDivider()
-
+            Card(
+                colors = CardDefaults.cardColors(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Text(
-                        text = "Built with Jetpack Compose, AppAuth, Coil, and OkHttp SSE.",
+                        text = "Made by the Solar Network Team with ❤️",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = "Open-sourced under APGL v3 license",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Code,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "github.com/Solsynth/CloudySky",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
             }
         }

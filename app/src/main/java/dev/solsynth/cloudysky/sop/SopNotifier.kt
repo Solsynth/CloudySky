@@ -57,7 +57,7 @@ class SopNotifier(private val context: Context) {
 
     fun buildServiceNotification(status: String): Notification {
         return NotificationCompat.Builder(context, SERVICE_CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_name)
             .setContentTitle(context.getString(R.string.app_name))
             .setContentText(status)
             .setOngoing(true)
@@ -79,29 +79,33 @@ class SopNotifier(private val context: Context) {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+        val groupKey = notificationGroupKey(item)
 
         val notification = when {
-            item.topic.contains("messages", ignoreCase = true) || item.type == "messages.new" -> buildMessageNotification(item, pendingIntent)
-            item.imageIds.isNotEmpty() || item.imageId.isNotBlank() || item.pfpId.isNotBlank() -> buildMediaNotification(item, pendingIntent)
-            else -> buildDefaultNotification(item, pendingIntent)
+            item.topic.contains("messages", ignoreCase = true) || item.type == "messages.new" -> buildMessageNotification(item, pendingIntent, groupKey)
+            item.imageIds.isNotEmpty() || item.imageId.isNotBlank() || item.pfpId.isNotBlank() -> buildMediaNotification(item, pendingIntent, groupKey)
+            else -> buildDefaultNotification(item, pendingIntent, groupKey)
         }
 
         notificationManager.notify(item.id.hashCode(), notification)
+        postGroupSummary(groupKey, item)
     }
 
-    private fun buildDefaultNotification(item: NotificationItem, pendingIntent: PendingIntent): Notification {
+    private fun buildDefaultNotification(item: NotificationItem, pendingIntent: PendingIntent, groupKey: String): Notification {
         val body = item.content.ifBlank { item.subtitle.ifBlank { item.title } }
         return NotificationCompat.Builder(context, EVENTS_CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_name)
             .setContentTitle(item.title.ifBlank { "New notification" })
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setGroup(groupKey)
+            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()
     }
 
-    private fun buildMessageNotification(item: NotificationItem, pendingIntent: PendingIntent): Notification {
+    private fun buildMessageNotification(item: NotificationItem, pendingIntent: PendingIntent, groupKey: String): Notification {
         val avatarBitmap = runBlocking {
             withTimeoutOrNull(10_000) {
                 loadBitmap(item.pfpId.ifBlank { item.imageIds.firstOrNull().orEmpty() })
@@ -149,7 +153,7 @@ class SopNotifier(private val context: Context) {
             .build()
 
         return NotificationCompat.Builder(context, EVENTS_CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_name)
             .setContentTitle(item.roomName.ifBlank { item.title.ifBlank { "Message" } })
             .setContentText(item.content.ifBlank { item.subtitle })
             .setSubText(richMediaSummary(item))
@@ -157,12 +161,14 @@ class SopNotifier(private val context: Context) {
             .setStyle(if (leadBitmap != null) NotificationCompat.BigPictureStyle().bigPicture(leadBitmap).bigLargeIcon(avatarBitmap?.let(::circleCrop)) else style)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .addAction(replyAction)
+            .setGroup(groupKey)
+            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()
     }
 
-    private fun buildMediaNotification(item: NotificationItem, pendingIntent: PendingIntent): Notification {
+    private fun buildMediaNotification(item: NotificationItem, pendingIntent: PendingIntent, groupKey: String): Notification {
         val leadBitmap = runBlocking {
             withTimeoutOrNull(10_000) {
                 loadMediaLeadBitmap(item)
@@ -182,12 +188,14 @@ class SopNotifier(private val context: Context) {
         }
         val content = item.content.ifBlank { item.subtitle.ifBlank { item.title } }
         return NotificationCompat.Builder(context, EVENTS_CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_name)
             .setContentTitle(item.title.ifBlank { "New notification" })
             .setContentText(content)
             .setSubText(richMediaSummary(item))
             .setLargeIcon(avatarBitmap?.let(::circleCrop))
             .setStyle(style)
+            .setGroup(groupKey)
+            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()
@@ -285,6 +293,50 @@ class SopNotifier(private val context: Context) {
             addAll(item.imageIds)
         }.size
         return if (count > 1) "$count media items" else null
+    }
+
+    private fun notificationGroupKey(item: NotificationItem): String {
+        return when {
+            item.roomId.isNotBlank() -> "room:${item.roomId}"
+            item.userId.isNotBlank() -> "user:${item.userId}"
+            item.topic.isNotBlank() -> "topic:${item.topic}"
+            item.type.isNotBlank() -> "type:${item.type}"
+            else -> "all"
+        }
+    }
+
+    private fun postGroupSummary(groupKey: String, latestItem: NotificationItem) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+
+        val activeCount = notificationManager.activeNotifications.count {
+            it.notification.group == groupKey && !it.notification.flags.and(Notification.FLAG_GROUP_SUMMARY).equals(Notification.FLAG_GROUP_SUMMARY)
+        }
+
+        val summaryId = groupKey.hashCode()
+        if (activeCount <= 1) {
+            notificationManager.cancel(summaryId)
+            return
+        }
+
+        val summaryText = when {
+            latestItem.roomName.isNotBlank() -> latestItem.roomName
+            latestItem.title.isNotBlank() -> latestItem.title
+            else -> context.getString(R.string.app_name)
+        }
+
+        val summary = NotificationCompat.Builder(context, EVENTS_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_name)
+            .setContentTitle(summaryText)
+            .setContentText("$activeCount new items")
+            .setStyle(NotificationCompat.InboxStyle().setSummaryText(summaryText))
+            .setGroup(groupKey)
+            .setGroupSummary(true)
+            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY)
+            .setOnlyAlertOnce(true)
+            .setAutoCancel(true)
+            .build()
+
+        notificationManager.notify(summaryId, summary)
     }
 
     private fun resolveAttachmentUrl(identifier: String): String {
