@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -48,6 +50,7 @@ fun SettingsScreen(
     isLoadingAccount: Boolean,
     sopState: SopListenerSnapshot,
     onBackClick: () -> Unit,
+    onAboutClick: () -> Unit,
     onToggleSopListener: (Boolean) -> Unit,
     onOpenBatteryOptimizationSettings: () -> Unit,
     onLogoutClick: () -> Unit,
@@ -69,7 +72,8 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Card(colors = CardDefaults.cardColors()) {
@@ -102,14 +106,12 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(text = currentAccount?.displayName ?: "Unknown account", style = MaterialTheme.typography.titleMedium)
-                            Text(text = currentAccount?.bio?.ifBlank { currentAccount?.language.orEmpty() }.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(text = currentAccount?.bio?.ifBlank { currentAccount.name }.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                         }
                     }
 
                     currentAccount?.let {
                         InfoRow(label = "Account ID", value = it.id)
-                        InfoRow(label = "Username", value = it.name)
-                        InfoRow(label = "Language", value = it.language.ifBlank { "Unknown" }, icon = Icons.Default.Language)
                     }
                 }
             }
@@ -160,6 +162,10 @@ fun SettingsScreen(
                         Text(text = it, color = MaterialTheme.colorScheme.error)
                     }
                 }
+            }
+
+            Button(onClick = onAboutClick, modifier = Modifier.fillMaxWidth()) {
+                Text("About")
             }
 
             TextButton(onClick = onLogoutClick, modifier = Modifier.fillMaxWidth()) {

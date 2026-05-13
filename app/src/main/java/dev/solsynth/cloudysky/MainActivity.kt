@@ -1,6 +1,7 @@
 package dev.solsynth.cloudysky
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.os.PowerManager
 import android.content.Intent
 import android.net.Uri
@@ -29,6 +30,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -51,19 +54,23 @@ import dev.solsynth.cloudysky.auth.CurrentAccount
 import dev.solsynth.cloudysky.notifications.NotificationController
 import dev.solsynth.cloudysky.notifications.NotificationListScreen
 import dev.solsynth.cloudysky.notifications.NotificationRepository
+import dev.solsynth.cloudysky.settings.AboutScreen
 import dev.solsynth.cloudysky.settings.SettingsScreen
 import dev.solsynth.cloudysky.sop.SopLaunchCoordinator
 import dev.solsynth.cloudysky.sop.SopListenerService
 import dev.solsynth.cloudysky.sop.SopRepository
 import dev.solsynth.cloudysky.ui.theme.CloudySkyTheme
 import kotlinx.coroutines.launch
+import androidx.core.net.toUri
 
 private enum class AppScreen {
     Notifications,
     Settings,
+    About,
 }
 
 class MainActivity : ComponentActivity() {
+    @SuppressLint("BatteryLife")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -126,12 +133,9 @@ class MainActivity : ComponentActivity() {
                 }
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    val targetState = if (!authState.isAuthorized) "auth" else screen.name.lowercase()
                     AnimatedContent(
-                        targetState = when {
-                            !authState.isAuthorized -> "auth"
-                            screen == AppScreen.Notifications -> "notifications"
-                            else -> "settings"
-                        },
+                        targetState = targetState,
                         label = "app-screen-switch",
                         transitionSpec = {
                             (slideInHorizontally(animationSpec = tween(220)) { it } + fadeIn()) togetherWith
@@ -158,11 +162,12 @@ class MainActivity : ComponentActivity() {
                                 onSettingsClick = { screen = AppScreen.Settings },
                                 onSignOut = authRepository::signOut,
                             )
-                            else -> SettingsScreen(
+                            "settings" -> SettingsScreen(
                                 currentAccount = currentAccount,
                                 isLoadingAccount = loadingAccount,
                                 sopState = sopState,
                                 onBackClick = { screen = AppScreen.Notifications },
+                                onAboutClick = { screen = AppScreen.About },
                                 onToggleSopListener = { enabled ->
                                     sopRepository.setEnabled(enabled)
                                     if (enabled && authState.isAuthorized) {
@@ -178,6 +183,13 @@ class MainActivity : ComponentActivity() {
                                     batteryOptimizationLauncher.launch(intent)
                                 },
                                 onLogoutClick = authRepository::signOut,
+                            )
+                            "about" -> AboutScreen(
+                                onBackClick = { screen = AppScreen.Settings },
+                                modifier = Modifier.padding(innerPadding),
+                                versionName = BuildConfig.VERSION_NAME,
+                                versionCode = BuildConfig.VERSION_CODE,
+                                buildType = BuildConfig.BUILD_TYPE,
                             )
                         }
                     }
