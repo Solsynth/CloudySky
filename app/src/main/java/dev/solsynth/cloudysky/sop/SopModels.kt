@@ -15,12 +15,31 @@ data class SopRegistration(
     val subscription: SopSubscription,
 )
 
+enum class SopListenerMode {
+    Stream,
+    Polling,
+    Dynamic,
+}
+
+data class SopDynamicConfig(
+    val pollingIntervalMs: Long = 5 * 60 * 1000,
+    val streamTimeoutMs: Long = 10 * 60 * 1000,
+)
+
+enum class SopRunState {
+    Idle,
+    Active,
+}
+
 data class SopState(
     val enabled: Boolean = true,
+    val mode: SopListenerMode = SopListenerMode.Dynamic,
+    val dynamicConfig: SopDynamicConfig = SopDynamicConfig(),
     val token: String? = null,
     val subscriptionId: String? = null,
     val deviceId: String? = null,
     val lastRegisteredAt: String? = null,
+    val lastSeenNotificationId: String? = null,
     val pendingStart: Boolean = false,
 )
 
@@ -36,10 +55,27 @@ enum class SopListenerStatus {
 
 data class SopListenerSnapshot(
     val enabled: Boolean = true,
+    val mode: SopListenerMode = SopListenerMode.Dynamic,
+    val runState: SopRunState = SopRunState.Idle,
+    val dynamicConfig: SopDynamicConfig = SopDynamicConfig(),
     val status: SopListenerStatus = SopListenerStatus.Idle,
     val isIgnoringBatteryOptimizations: Boolean = false,
     val hasNotificationPermission: Boolean = true,
     val deviceId: String? = null,
     val subscriptionId: String? = null,
     val error: String? = null,
+)
+
+enum class SopLogEntryType {
+    Notification,
+    ModeSwitch,
+    Polling,
+}
+
+data class SopLogEntry(
+    val timestamp: Long = System.currentTimeMillis(),
+    val type: SopLogEntryType = SopLogEntryType.Notification,
+    val title: String = "",
+    val topic: String = "",
+    val runState: SopRunState? = null,
 )

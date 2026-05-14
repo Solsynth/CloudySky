@@ -22,6 +22,26 @@ Behavior:
 - opens notification deep links using `actionUri`
 - can resume after boot when the listener is enabled
 
+### Connection Modes
+
+The SOP listener supports three connection modes:
+
+| Mode | Behavior | Battery | Realtime |
+|------|----------|---------|----------|
+| **Stream** | Persistent SSE connection | High | Instant |
+| **Polling** | Periodic API polling | Low | Delayed |
+| **Dynamic** | Smart switching (default) | Medium | Near-instant |
+
+**Dynamic mode** uses a state machine to balance battery usage and responsiveness:
+
+- **Idle**: Polls the notification API at a configurable interval (1m / 5m / 10m)
+- **Active**: Establishes SSE streaming when a new notification is detected
+- Returns to Idle if the stream has no activity for the configured timeout (5m / 10m / 15m / 30m)
+
+### SOP Notification Logger
+
+The app logs received SOP notifications with timestamps. The log is viewable in Settings and stores the last 50 entries.
+
 ## Notification Grouping
 
 CloudySky groups local notifications by metadata in this order:
@@ -40,6 +60,8 @@ If a notification has media metadata, it can also show a banner image and a circ
 ## Battery Optimizations
 
 The app can request exemption from battery optimizations. This helps keep the foreground listener stable on devices that aggressively restrict background work.
+
+A warning banner is shown on the main dashboard when battery optimizations are enabled.
 
 ## Development
 

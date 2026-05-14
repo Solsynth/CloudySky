@@ -42,6 +42,7 @@ import dev.solsynth.cloudysky.settings.AboutScreen
 import dev.solsynth.cloudysky.settings.SettingsScreen
 import dev.solsynth.cloudysky.sop.SopLaunchCoordinator
 import dev.solsynth.cloudysky.sop.SopListenerService
+import dev.solsynth.cloudysky.sop.SopNotificationLogger
 import dev.solsynth.cloudysky.sop.SopRepository
 import dev.solsynth.cloudysky.ui.theme.CloudySkyTheme
 
@@ -83,6 +84,8 @@ class MainActivity : ComponentActivity() {
                 }
                 var currentAccount by remember { mutableStateOf<CurrentAccount?>(null) }
                 var loadingAccount by remember { mutableStateOf(false) }
+                val sopNotificationLogger = remember { SopNotificationLogger(context) }
+                var logEntries by remember { mutableStateOf(sopNotificationLogger.getEntries()) }
 
                 LaunchedEffect(authState.isAuthorized) {
                     Log.d(TAG, "auth state changed: authorized=${authState.isAuthorized}")
@@ -167,14 +170,23 @@ class MainActivity : ComponentActivity() {
                         NotificationListScreen(
                             uiState = notificationState,
                             currentAccount = currentAccount,
+                            sopState = sopState,
                             onRefresh = notificationController::refresh,
                             onLoadMore = notificationController::loadMore,
                             onSettingsClick = { navController.navigate(Routes.SETTINGS) },
                             onSignOut = authRepository::signOut,
+                            onOpenBatteryOptimizationSettings = {
+                                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                                    .setData(Uri.parse("package:${context.packageName}"))
+                                batteryOptimizationLauncher.launch(intent)
+                            },
                         )
                     }
 
                     composable(Routes.SETTINGS) {
+                        LaunchedEffect(Unit) {
+                            logEntries = sopNotificationLogger.getEntries()
+                        }
                         SettingsScreen(
                             currentAccount = currentAccount,
                             isLoadingAccount = loadingAccount,
@@ -190,12 +202,26 @@ class MainActivity : ComponentActivity() {
                                     SopListenerService.stop(context)
                                 }
                             },
+                            onSetMode = { mode ->
+                                sopRepository.setMode(mode)
+                                SopListenerService.stop(context)
+                                if (sopState.enabled && authState.isAuthorized) {
+                                    sopLaunchCoordinator.requestStart()
+                                    sopLaunchCoordinator.startIfPending()
+                                }
+                            },
+                            onSetDynamicConfig = sopRepository::setDynamicConfig,
                             onOpenBatteryOptimizationSettings = {
                                 val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
                                     .setData(Uri.parse("package:${context.packageName}"))
                                 batteryOptimizationLauncher.launch(intent)
                             },
                             onLogoutClick = authRepository::signOut,
+                            logEntries = logEntries,
+                            onClearLog = {
+                                sopNotificationLogger.clearLog()
+                                logEntries = emptyList()
+                            },
                         )
                     }
 

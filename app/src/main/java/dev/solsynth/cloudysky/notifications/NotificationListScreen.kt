@@ -61,6 +61,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import dev.solsynth.cloudysky.auth.CurrentAccount
+import dev.solsynth.cloudysky.sop.SopListenerMode
+import dev.solsynth.cloudysky.sop.SopListenerSnapshot
+import dev.solsynth.cloudysky.sop.SopListenerStatus
+import dev.solsynth.cloudysky.sop.SopRunState
 import java.time.Duration
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -71,10 +75,12 @@ import java.util.Locale
 fun NotificationListScreen(
     uiState: NotificationUiState,
     currentAccount: CurrentAccount?,
+    sopState: SopListenerSnapshot,
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     onSettingsClick: () -> Unit,
     onSignOut: () -> Unit,
+    onOpenBatteryOptimizationSettings: () -> Unit,
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
@@ -158,8 +164,100 @@ fun NotificationListScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(text = currentAccount.displayName, style = MaterialTheme.typography.titleMedium)
-                                Text(text = currentAccount.bio.ifBlank { currentAccount.language }, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    text = currentAccount.bio.ifBlank { currentAccount.language },
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                             }
+                        }
+                    }
+                }
+
+                if (!sopState.isIgnoringBatteryOptimizations) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                        ),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                text = "Battery optimization may kill the notification listener",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                            Text(
+                                text = "Disable it to keep receiving push notifications reliably in the background.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                            Button(
+                                onClick = onOpenBatteryOptimizationSettings,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("Disable battery optimization")
+                            }
+                        }
+                    }
+                }
+
+                if (sopState.enabled) {
+                    val statusColor = when (sopState.status) {
+                        SopListenerStatus.Connected -> MaterialTheme.colorScheme.primaryContainer
+                        SopListenerStatus.Connecting, SopListenerStatus.Reconnecting -> MaterialTheme.colorScheme.secondaryContainer
+                        SopListenerStatus.Failed -> MaterialTheme.colorScheme.errorContainer
+                        else -> MaterialTheme.colorScheme.surfaceVariant
+                    }
+                    val modeLabel = when (sopState.mode) {
+                        SopListenerMode.Stream -> "Stream"
+                        SopListenerMode.Polling -> "Polling"
+                        SopListenerMode.Dynamic -> "Dynamic"
+                    }
+                    val runStateLabel = when (sopState.runState) {
+                        SopRunState.Idle -> "idle"
+                        SopRunState.Active -> "active"
+                    }
+                    val statusText = when (sopState.status) {
+                        SopListenerStatus.Connected -> "$modeLabel mode, streaming ($runStateLabel)"
+                        SopListenerStatus.Connecting -> "Connecting..."
+                        SopListenerStatus.Reconnecting -> "Reconnecting..."
+                        SopListenerStatus.Failed -> "Connection failed"
+                        SopListenerStatus.Registering -> "Registering device..."
+                        SopListenerStatus.Idle -> "$modeLabel mode, $runStateLabel"
+                        else -> "$modeLabel mode"
+                    }
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        colors = CardDefaults.cardColors(containerColor = statusColor),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(8.dp),
+                                shape = CircleShape,
+                                color = when (sopState.status) {
+                                    SopListenerStatus.Connected -> MaterialTheme.colorScheme.primary
+                                    SopListenerStatus.Connecting, SopListenerStatus.Reconnecting -> MaterialTheme.colorScheme.secondary
+                                    SopListenerStatus.Failed -> MaterialTheme.colorScheme.error
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            ) {}
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = statusText,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
                         }
                     }
                 }

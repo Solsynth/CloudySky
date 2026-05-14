@@ -17,8 +17,12 @@ class SopRepository(context: Context) {
     private val store = SopStore(appContext)
     private val api = SopApi()
 
-    private val _listenerState = MutableStateFlow(snapshot(status = SopListenerStatus.Idle))
+    private val _listenerState = MutableStateFlow(SopListenerSnapshot())
     val listenerState: StateFlow<SopListenerSnapshot> = _listenerState.asStateFlow()
+
+    init {
+        _listenerState.value = snapshot(status = SopListenerStatus.Idle)
+    }
 
     fun currentState(): SopState = store.load()
 
@@ -31,6 +35,20 @@ class SopRepository(context: Context) {
             status = if (enabled) SopListenerStatus.Idle else SopListenerStatus.Disabled,
             error = null,
         )
+    }
+
+    fun setMode(mode: SopListenerMode) {
+        store.save(store.load().copy(mode = mode))
+        _listenerState.value = snapshot(mode = mode)
+    }
+
+    fun setDynamicConfig(config: SopDynamicConfig) {
+        store.save(store.load().copy(dynamicConfig = config))
+        _listenerState.value = snapshot(dynamicConfig = config)
+    }
+
+    fun setLastSeenNotificationId(id: String?) {
+        store.save(store.load().copy(lastSeenNotificationId = id))
     }
 
     fun clearAll() {
@@ -117,17 +135,32 @@ class SopRepository(context: Context) {
         _listenerState.value = snapshot(status = status, error = error)
     }
 
-    private fun snapshot(status: SopListenerStatus, error: String? = null): SopListenerSnapshot {
+    fun updateRunState(runState: SopRunState) {
+        _listenerState.value = snapshot(runState = runState)
+    }
+
+    private fun snapshot(
+        status: SopListenerStatus? = null,
+        runState: SopRunState? = null,
+        mode: SopListenerMode? = null,
+        dynamicConfig: SopDynamicConfig? = null,
+        error: String? = null,
+    ): SopListenerSnapshot {
         val powerManager = appContext.getSystemService(Context.POWER_SERVICE) as PowerManager
         val notificationsEnabled = NotificationManagerCompat.from(appContext).areNotificationsEnabled()
+        val current = _listenerState.value
+        val state = store.load()
         return SopListenerSnapshot(
-            enabled = store.load().enabled,
-            status = status,
+            enabled = state.enabled,
+            mode = mode ?: state.mode,
+            runState = runState ?: current.runState,
+            dynamicConfig = dynamicConfig ?: state.dynamicConfig,
+            status = status ?: current.status,
             isIgnoringBatteryOptimizations = powerManager.isIgnoringBatteryOptimizations(appContext.packageName),
             hasNotificationPermission = notificationsEnabled,
-            deviceId = store.load().deviceId,
-            subscriptionId = store.load().subscriptionId,
-            error = error,
+            deviceId = state.deviceId,
+            subscriptionId = state.subscriptionId,
+            error = error ?: current.error,
         )
     }
 }

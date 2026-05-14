@@ -27,10 +27,14 @@ class SopStore(context: Context) {
     fun save(state: SopState) {
         prefs.edit()
             .putBoolean(KEY_ENABLED, state.enabled)
+            .putString(KEY_MODE, state.mode.name)
+            .putLong(KEY_POLLING_INTERVAL, state.dynamicConfig.pollingIntervalMs)
+            .putLong(KEY_STREAM_TIMEOUT, state.dynamicConfig.streamTimeoutMs)
             .putString(KEY_TOKEN, state.token)
             .putString(KEY_SUBSCRIPTION_ID, state.subscriptionId)
             .putString(KEY_DEVICE_ID, state.deviceId)
             .putString(KEY_LAST_REGISTERED_AT, state.lastRegisteredAt)
+            .putString(KEY_LAST_SEEN_NOTIFICATION_ID, state.lastSeenNotificationId)
             .putBoolean(KEY_PENDING_START, state.pendingStart)
             .apply()
         _state.value = state
@@ -61,12 +65,20 @@ class SopStore(context: Context) {
     }
 
     private fun loadState(): SopState {
+        val modeName = prefs.getString(KEY_MODE, SopListenerMode.Dynamic.name) ?: SopListenerMode.Dynamic.name
+        val mode = try { SopListenerMode.valueOf(modeName) } catch (_: Exception) { SopListenerMode.Dynamic }
         return SopState(
             enabled = prefs.getBoolean(KEY_ENABLED, true),
+            mode = mode,
+            dynamicConfig = SopDynamicConfig(
+                pollingIntervalMs = prefs.getLong(KEY_POLLING_INTERVAL, 5 * 60 * 1000),
+                streamTimeoutMs = prefs.getLong(KEY_STREAM_TIMEOUT, 10 * 60 * 1000),
+            ),
             token = prefs.getString(KEY_TOKEN, null),
             subscriptionId = prefs.getString(KEY_SUBSCRIPTION_ID, null),
             deviceId = prefs.getString(KEY_DEVICE_ID, null),
             lastRegisteredAt = prefs.getString(KEY_LAST_REGISTERED_AT, null),
+            lastSeenNotificationId = prefs.getString(KEY_LAST_SEEN_NOTIFICATION_ID, null),
             pendingStart = prefs.getBoolean(KEY_PENDING_START, false),
         )
     }
@@ -74,10 +86,14 @@ class SopStore(context: Context) {
     private companion object {
         const val FILE_NAME = "sop_state"
         const val KEY_ENABLED = "enabled"
+        const val KEY_MODE = "mode"
+        const val KEY_POLLING_INTERVAL = "polling_interval_ms"
+        const val KEY_STREAM_TIMEOUT = "stream_timeout_ms"
         const val KEY_TOKEN = "token"
         const val KEY_SUBSCRIPTION_ID = "subscription_id"
         const val KEY_DEVICE_ID = "device_id"
         const val KEY_LAST_REGISTERED_AT = "last_registered_at"
+        const val KEY_LAST_SEEN_NOTIFICATION_ID = "last_seen_notification_id"
         const val KEY_PENDING_START = "pending_start"
     }
 }

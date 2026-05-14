@@ -13,6 +13,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import okhttp3.sse.EventSource
 
@@ -20,19 +21,25 @@ class SopListenerService : android.app.Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var repository: SopRepository
     private lateinit var notifier: SopNotifier
+    private lateinit var logger: SopNotificationLogger
     private val streamClient = SopStreamClient()
+    private val api = SopApi()
 
     private var eventSource: EventSource? = null
-    private var streamJob: Job? = null
+    private var activeJob: Job? = null
+    private var pollingJob: Job? = null
+    private var timeoutJob: Job? = null
     private var reconnectAttempt = 0
     @Volatile private var stopRequested = false
+    @Volatile private var currentRunState = SopRunState.Idle
 
     override fun onCreate() {
         super.onCreate()
         repository = SopRepository(applicationContext)
         notifier = SopNotifier(applicationContext)
+        logger = SopNotificationLogger(applicationContext)
         notifier.ensureChannels()
-        if (!enterForeground("Connecting to SOP stream")) {
+        if (!enterForeground("Starting notification listener")) {
             repository.requestStart()
             repository.updateStatus(SopListenerStatus.Failed, "Foreground start blocked by system")
             stopSelf()
@@ -48,10 +55,10 @@ class SopListenerService : android.app.Service() {
             }
             else -> {
                 stopRequested = false
-                if (streamJob?.isActive == true || eventSource != null) {
+                if (activeJob?.isActive == true || pollingJob?.isActive == true) {
                     return START_STICKY
                 }
-                startStreaming()
+                startBasedOnMode()
             }
         }
         return START_STICKY
@@ -59,14 +66,129 @@ class SopListenerService : android.app.Service() {
 
     override fun onDestroy() {
         stopRequested = true
-        streamJob?.cancel()
+        activeJob?.cancel()
+        pollingJob?.cancel()
+        timeoutJob?.cancel()
         eventSource?.cancel()
         repository.updateStatus(SopListenerStatus.Idle)
+        repository.updateRunState(SopRunState.Idle)
         serviceScope.cancel()
         super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun startBasedOnMode() {
+        if (stopRequested) return
+        if (!repository.currentState().enabled) {
+            repository.updateStatus(SopListenerStatus.Disabled)
+            stopSelf()
+            return
+        }
+
+        val state = repository.currentState()
+        when (state.mode) {
+            SopListenerMode.Stream -> enterActiveState()
+            SopListenerMode.Polling -> enterIdleState()
+            SopListenerMode.Dynamic -> enterIdleState()
+        }
+    }
+
+    private fun enterIdleState() {
+        if (stopRequested) return
+        Log.d(TAG, "Entering idle state (polling)")
+        val previousState = currentRunState
+        currentRunState = SopRunState.Idle
+        repository.updateRunState(SopRunState.Idle)
+        repository.updateStatus(SopListenerStatus.Idle)
+        enterForeground("Polling for notifications")
+
+        if (previousState == SopRunState.Active) {
+            logger.logModeSwitch(SopRunState.Active, SopRunState.Idle)
+        }
+
+        activeJob?.cancel()
+        eventSource?.cancel()
+        timeoutJob?.cancel()
+
+        pollingJob?.cancel()
+        pollingJob = serviceScope.launch {
+            val state = repository.currentState()
+            val intervalMs = state.dynamicConfig.pollingIntervalMs
+
+            while (isActive && !stopRequested) {
+                pollForNotifications()
+                delay(intervalMs)
+            }
+        }
+    }
+
+    private fun enterActiveState() {
+        if (stopRequested) return
+        Log.d(TAG, "Entering active state (streaming)")
+        val previousState = currentRunState
+        currentRunState = SopRunState.Active
+        repository.updateRunState(SopRunState.Active)
+        enterForeground("Listening for notifications")
+
+        if (previousState == SopRunState.Idle) {
+            logger.logModeSwitch(SopRunState.Idle, SopRunState.Active)
+        }
+
+        pollingJob?.cancel()
+        timeoutJob?.cancel()
+
+        startStreaming()
+    }
+
+    private fun pollForNotifications() {
+        if (stopRequested) return
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                val registration = repository.ensureRegistration().getOrElse {
+                    Log.e(TAG, "Polling registration failed", it)
+                    return@launch
+                }
+
+                val notifications = api.getNotifications(registration.token, take = 5)
+                    ?: return@launch
+
+                val lastSeenId = repository.currentState().lastSeenNotificationId
+                val newNotifications = if (lastSeenId != null) {
+                    val lastIndex = notifications.indexOfFirst { it.id == lastSeenId }
+                    if (lastIndex == -1) notifications else notifications.take(lastIndex)
+                } else {
+                    notifications.firstOrNull()?.let { listOf(it) } ?: emptyList()
+                }
+
+                logger.logPolling(newNotifications.size)
+
+                if (newNotifications.isNotEmpty()) {
+                    val newestId = newNotifications.first().id
+                    repository.setLastSeenNotificationId(newestId)
+                    Log.d(TAG, "Polling found ${newNotifications.size} new notifications")
+
+                    newNotifications.reversed().forEach { notification ->
+                        logger.logNotification(notification.title, notification.topic)
+                        notifier.showNotification(notification)
+                    }
+
+                    val state = repository.currentState()
+                    if (state.mode == SopListenerMode.Dynamic) {
+                        launch(Dispatchers.Main) {
+                            enterActiveState()
+                        }
+                    }
+                } else {
+                    if (lastSeenId == null && notifications.isNotEmpty()) {
+                        repository.setLastSeenNotificationId(notifications.first().id)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Polling failed", e)
+            }
+        }
+    }
 
     private fun startStreaming() {
         if (stopRequested) return
@@ -76,9 +198,9 @@ class SopListenerService : android.app.Service() {
             return
         }
 
-        streamJob?.cancel()
+        activeJob?.cancel()
         eventSource?.cancel()
-        streamJob = serviceScope.launch {
+        activeJob = serviceScope.launch {
             val registration = repository.ensureRegistration().getOrElse {
                 repository.updateStatus(SopListenerStatus.Failed, it.message)
                 scheduleReconnect()
@@ -95,11 +217,14 @@ class SopListenerService : android.app.Service() {
                 override fun onReady(payload: String) {
                     Log.d(TAG, "stream ready: $payload")
                     repository.updateStatus(SopListenerStatus.Connected)
-                    enterForeground("Listening for notifications")
+                    resetStreamTimeout()
                 }
 
                 override fun onNotification(notification: NotificationItem) {
+                    logger.logNotification(notification.title, notification.topic)
                     notifier.showNotification(notification)
+                    repository.setLastSeenNotificationId(notification.id)
+                    resetStreamTimeout()
                 }
 
                 override fun onClosed() {
@@ -120,10 +245,29 @@ class SopListenerService : android.app.Service() {
         }
     }
 
+    private fun resetStreamTimeout() {
+        val state = repository.currentState()
+        if (state.mode != SopListenerMode.Dynamic) return
+
+        timeoutJob?.cancel()
+        timeoutJob = serviceScope.launch {
+            delay(state.dynamicConfig.streamTimeoutMs)
+            Log.d(TAG, "Stream timeout, returning to idle state")
+            enterIdleState()
+        }
+    }
+
     private fun scheduleReconnect() {
         if (stopRequested) return
-        streamJob?.cancel()
-        streamJob = serviceScope.launch {
+        val state = repository.currentState()
+
+        if (state.mode == SopListenerMode.Polling) {
+            enterIdleState()
+            return
+        }
+
+        activeJob?.cancel()
+        activeJob = serviceScope.launch {
             if (stopRequested) return@launch
             reconnectAttempt += 1
             val backoffMillis = when (reconnectAttempt) {
