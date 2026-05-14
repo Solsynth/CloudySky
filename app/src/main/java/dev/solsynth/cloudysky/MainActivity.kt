@@ -15,29 +15,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -47,8 +29,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import dev.solsynth.cloudysky.auth.AuthRepository
 import dev.solsynth.cloudysky.auth.AuthScreen
 import dev.solsynth.cloudysky.auth.CurrentAccount
@@ -61,13 +44,12 @@ import dev.solsynth.cloudysky.sop.SopLaunchCoordinator
 import dev.solsynth.cloudysky.sop.SopListenerService
 import dev.solsynth.cloudysky.sop.SopRepository
 import dev.solsynth.cloudysky.ui.theme.CloudySkyTheme
-import kotlinx.coroutines.launch
-import androidx.core.net.toUri
 
-private enum class AppScreen {
-    Notifications,
-    Settings,
-    About,
+private object Routes {
+    const val AUTH = "auth"
+    const val NOTIFICATIONS = "notifications"
+    const val SETTINGS = "settings"
+    const val ABOUT = "about"
 }
 
 class MainActivity : ComponentActivity() {
@@ -87,8 +69,7 @@ class MainActivity : ComponentActivity() {
                 val authState by authRepository.authState.collectAsState()
                 val notificationState by notificationController.uiState.collectAsState()
                 val sopState by sopRepository.listenerState.collectAsState()
-                var screen by remember { mutableStateOf(AppScreen.Notifications) }
-                val scope = rememberCoroutineScope()
+                val navController = rememberNavController()
                 val launcher = rememberLauncherForActivityResult(StartActivityForResult()) { result ->
                     Log.d(TAG, "auth launcher returned: hasData=${result.data != null}")
                     authRepository.handleAuthorizationResult(result.data)
@@ -109,7 +90,9 @@ class MainActivity : ComponentActivity() {
                         currentAccount = null
                         notificationController.clear()
                         SopListenerService.stop(context)
-                        screen = AppScreen.Notifications
+                        navController.navigate(Routes.AUTH) {
+                            popUpTo(0) { inclusive = true }
+                        }
                         return@LaunchedEffect
                     }
 
@@ -127,72 +110,102 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                LaunchedEffect(authState.isAuthorized, screen) {
+                LaunchedEffect(authState.isAuthorized) {
                     if (authState.isAuthorized) {
+                        navController.navigate(Routes.NOTIFICATIONS) {
+                            popUpTo(Routes.AUTH) { inclusive = true }
+                        }
                         sopLaunchCoordinator.startIfPending()
                     }
                 }
 
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    val targetState = if (!authState.isAuthorized) "auth" else screen.name.lowercase()
-                    AnimatedContent(
-                        targetState = targetState,
-                        label = "app-screen-switch",
-                        transitionSpec = {
-                            (slideInHorizontally(animationSpec = tween(220)) { it } + fadeIn()) togetherWith
-                                (slideOutHorizontally(animationSpec = tween(220)) { -it } + fadeOut())
-                        }
-                    ) { target ->
-                        when (target) {
-                            "auth" -> AuthScreen(
-                                isSignedIn = false,
-                                currentAccount = currentAccount,
-                                loadingAccount = loadingAccount,
-                                onSignIn = {
-                                    Log.d(TAG, "sign in clicked")
-                                    launcher.launch(authRepository.createAuthorizationIntent())
-                                },
-                                onSignOut = authRepository::signOut,
-                                modifier = Modifier.padding(innerPadding)
-                            )
-                            "notifications" -> NotificationListScreen(
-                                uiState = notificationState,
-                                currentAccount = currentAccount,
-                                onRefresh = notificationController::refresh,
-                                onLoadMore = notificationController::loadMore,
-                                onSettingsClick = { screen = AppScreen.Settings },
-                                onSignOut = authRepository::signOut,
-                            )
-                            "settings" -> SettingsScreen(
-                                currentAccount = currentAccount,
-                                isLoadingAccount = loadingAccount,
-                                sopState = sopState,
-                                onBackClick = { screen = AppScreen.Notifications },
-                                onAboutClick = { screen = AppScreen.About },
-                                onToggleSopListener = { enabled ->
-                                    sopRepository.setEnabled(enabled)
-                                    if (enabled && authState.isAuthorized) {
-                                        sopLaunchCoordinator.requestStart()
-                                        sopLaunchCoordinator.startIfPending()
-                                    } else {
-                                        SopListenerService.stop(context)
-                                    }
-                                },
-                                onOpenBatteryOptimizationSettings = {
-                                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                                        .setData(Uri.parse("package:${context.packageName}"))
-                                    batteryOptimizationLauncher.launch(intent)
-                                },
-                                onLogoutClick = authRepository::signOut,
-                            )
-                            "about" -> AboutScreen(
-                                onBackClick = { screen = AppScreen.Settings },
-                                modifier = Modifier.padding(innerPadding),
-                                versionName = BuildConfig.VERSION_NAME,
-                                versionCode = BuildConfig.VERSION_CODE,
-                                buildType = BuildConfig.BUILD_TYPE,
-                            )
-                        }
+                val startDestination = if (authState.isAuthorized) Routes.NOTIFICATIONS else Routes.AUTH
+
+                NavHost(
+                    navController = navController,
+                    startDestination = startDestination,
+                    modifier = Modifier.fillMaxSize(),
+                    enterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(220)
+                        ) + fadeIn(animationSpec = tween(220))
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(220)
+                        ) + fadeOut(animationSpec = tween(220))
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(220)
+                        ) + fadeIn(animationSpec = tween(220))
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(220)
+                        ) + fadeOut(animationSpec = tween(220))
+                    },
+                ) {
+                    composable(Routes.AUTH) {
+                        AuthScreen(
+                            isSignedIn = false,
+                            currentAccount = currentAccount,
+                            loadingAccount = loadingAccount,
+                            onSignIn = {
+                                Log.d(TAG, "sign in clicked")
+                                launcher.launch(authRepository.createAuthorizationIntent())
+                            },
+                            onSignOut = authRepository::signOut,
+                        )
+                    }
+
+                    composable(Routes.NOTIFICATIONS) {
+                        NotificationListScreen(
+                            uiState = notificationState,
+                            currentAccount = currentAccount,
+                            onRefresh = notificationController::refresh,
+                            onLoadMore = notificationController::loadMore,
+                            onSettingsClick = { navController.navigate(Routes.SETTINGS) },
+                            onSignOut = authRepository::signOut,
+                        )
+                    }
+
+                    composable(Routes.SETTINGS) {
+                        SettingsScreen(
+                            currentAccount = currentAccount,
+                            isLoadingAccount = loadingAccount,
+                            sopState = sopState,
+                            onBackClick = { navController.popBackStack() },
+                            onAboutClick = { navController.navigate(Routes.ABOUT) },
+                            onToggleSopListener = { enabled ->
+                                sopRepository.setEnabled(enabled)
+                                if (enabled && authState.isAuthorized) {
+                                    sopLaunchCoordinator.requestStart()
+                                    sopLaunchCoordinator.startIfPending()
+                                } else {
+                                    SopListenerService.stop(context)
+                                }
+                            },
+                            onOpenBatteryOptimizationSettings = {
+                                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                                    .setData(Uri.parse("package:${context.packageName}"))
+                                batteryOptimizationLauncher.launch(intent)
+                            },
+                            onLogoutClick = authRepository::signOut,
+                        )
+                    }
+
+                    composable(Routes.ABOUT) {
+                        AboutScreen(
+                            onBackClick = { navController.popBackStack() },
+                            versionName = BuildConfig.VERSION_NAME,
+                            versionCode = BuildConfig.VERSION_CODE,
+                            buildType = BuildConfig.BUILD_TYPE,
+                        )
                     }
                 }
             }
