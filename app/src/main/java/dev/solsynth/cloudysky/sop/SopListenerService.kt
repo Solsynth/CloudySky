@@ -154,11 +154,20 @@ class SopListenerService : android.app.Service() {
                     ?: return@launch
 
                 val lastSeenId = repository.currentState().lastSeenNotificationId
-                val newNotifications = if (lastSeenId != null) {
-                    val lastIndex = notifications.indexOfFirst { it.id == lastSeenId }
-                    if (lastIndex == -1) notifications else notifications.take(lastIndex)
+
+                if (lastSeenId == null) {
+                    notifications.firstOrNull()?.let {
+                        repository.setLastSeenNotificationId(it.id)
+                    }
+                    logger.logPolling(0)
+                    return@launch
+                }
+
+                val lastIndex = notifications.indexOfFirst { it.id == lastSeenId }
+                val newNotifications = if (lastIndex == -1) {
+                    emptyList()
                 } else {
-                    notifications.firstOrNull()?.let { listOf(it) } ?: emptyList()
+                    notifications.take(lastIndex)
                 }
 
                 logger.logPolling(newNotifications.size)
@@ -178,10 +187,6 @@ class SopListenerService : android.app.Service() {
                         launch(Dispatchers.Main) {
                             enterActiveState()
                         }
-                    }
-                } else {
-                    if (lastSeenId == null && notifications.isNotEmpty()) {
-                        repository.setLastSeenNotificationId(notifications.first().id)
                     }
                 }
             } catch (e: Exception) {

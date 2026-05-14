@@ -61,6 +61,7 @@ data class SopListenerSnapshot(
     val status: SopListenerStatus = SopListenerStatus.Idle,
     val isIgnoringBatteryOptimizations: Boolean = false,
     val hasNotificationPermission: Boolean = true,
+    val androidDeviceId: String? = null,
     val deviceId: String? = null,
     val subscriptionId: String? = null,
     val error: String? = null,

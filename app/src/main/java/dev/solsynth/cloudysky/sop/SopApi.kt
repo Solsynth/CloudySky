@@ -30,6 +30,26 @@ class SopApi {
         }
     }
 
+    suspend fun deleteSubscription(accessToken: String, subscriptionId: String): Boolean {
+        val url = URL("$baseUrl/ring/notifications/subscription/$subscriptionId")
+        val connection = url.openConnection() as HttpURLConnection
+
+        return try {
+            connection.requestMethod = "DELETE"
+            connection.setRequestProperty("Authorization", "Bearer $accessToken")
+            connection.setRequestProperty("Accept", "application/json")
+
+            val status = connection.responseCode
+            Log.d(TAG, "deleteSubscription: status=$status subscriptionId=$subscriptionId")
+            status in 200..299
+        } catch (e: Exception) {
+            Log.e(TAG, "deleteSubscription failed", e)
+            false
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     suspend fun getNotifications(token: String, take: Int = 20, offset: Int = 0): List<NotificationItem>? {
         val url = URL("$baseUrl/ring/notifications/sop?take=$take&offset=$offset")
         val connection = url.openConnection() as HttpURLConnection

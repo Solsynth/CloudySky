@@ -2,6 +2,7 @@ package dev.solsynth.cloudysky.sop
 
 import android.content.Context
 import android.os.PowerManager
+import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
 import dev.solsynth.cloudysky.auth.AuthRepository
 import dev.solsynth.cloudysky.notifications.NotificationItem
@@ -54,6 +55,21 @@ class SopRepository(context: Context) {
     fun clearAll() {
         store.clearAll()
         _listenerState.value = snapshot(status = SopListenerStatus.Idle, error = null)
+    }
+
+    suspend fun deleteSubscriptionAndClear(): Boolean {
+        val state = store.load()
+        val subscriptionId = state.subscriptionId
+        val accessToken = authRepository.accessToken()
+
+        val deleted = if (subscriptionId != null && accessToken != null) {
+            withContext(Dispatchers.IO) { api.deleteSubscription(accessToken, subscriptionId) }
+        } else {
+            true
+        }
+
+        clearAll()
+        return deleted
     }
 
     fun clearRegistration() {
@@ -148,6 +164,7 @@ class SopRepository(context: Context) {
     ): SopListenerSnapshot {
         val powerManager = appContext.getSystemService(Context.POWER_SERVICE) as PowerManager
         val notificationsEnabled = NotificationManagerCompat.from(appContext).areNotificationsEnabled()
+        val androidDeviceId = Settings.Secure.getString(appContext.contentResolver, Settings.Secure.ANDROID_ID)
         val current = _listenerState.value
         val state = store.load()
         return SopListenerSnapshot(
@@ -158,6 +175,7 @@ class SopRepository(context: Context) {
             status = status ?: current.status,
             isIgnoringBatteryOptimizations = powerManager.isIgnoringBatteryOptimizations(appContext.packageName),
             hasNotificationPermission = notificationsEnabled,
+            androidDeviceId = androidDeviceId,
             deviceId = state.deviceId,
             subscriptionId = state.subscriptionId,
             error = error ?: current.error,

@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
@@ -86,6 +87,14 @@ class MainActivity : ComponentActivity() {
                 var loadingAccount by remember { mutableStateOf(false) }
                 val sopNotificationLogger = remember { SopNotificationLogger(context) }
                 var logEntries by remember { mutableStateOf(sopNotificationLogger.getEntries()) }
+
+                val performLogout: () -> Unit = {
+                    coroutineScope.launch {
+                        SopListenerService.stop(context)
+                        sopRepository.deleteSubscriptionAndClear()
+                        authRepository.signOut()
+                    }
+                }
 
                 LaunchedEffect(authState.isAuthorized) {
                     Log.d(TAG, "auth state changed: authorized=${authState.isAuthorized}")
@@ -162,7 +171,7 @@ class MainActivity : ComponentActivity() {
                                 Log.d(TAG, "sign in clicked")
                                 launcher.launch(authRepository.createAuthorizationIntent())
                             },
-                            onSignOut = authRepository::signOut,
+                            onSignOut = performLogout,
                         )
                     }
 
@@ -174,7 +183,7 @@ class MainActivity : ComponentActivity() {
                             onRefresh = notificationController::refresh,
                             onLoadMore = notificationController::loadMore,
                             onSettingsClick = { navController.navigate(Routes.SETTINGS) },
-                            onSignOut = authRepository::signOut,
+                            onSignOut = performLogout,
                             onOpenBatteryOptimizationSettings = {
                                 val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
                                     .setData(Uri.parse("package:${context.packageName}"))
@@ -216,7 +225,7 @@ class MainActivity : ComponentActivity() {
                                     .setData(Uri.parse("package:${context.packageName}"))
                                 batteryOptimizationLauncher.launch(intent)
                             },
-                            onLogoutClick = authRepository::signOut,
+                            onLogoutClick = performLogout,
                             logEntries = logEntries,
                             onClearLog = {
                                 sopNotificationLogger.clearLog()

@@ -289,8 +289,8 @@ fun SettingsScreen(
                         )
                     }
 
-                    if (!sopState.deviceId.isNullOrBlank()) {
-                        InfoRow(label = "Device ID", value = sopState.deviceId.orEmpty())
+                    if (!sopState.androidDeviceId.isNullOrBlank()) {
+                        InfoRow(label = "Device ID", value = sopState.androidDeviceId.orEmpty())
                     }
 
                     if (!sopState.subscriptionId.isNullOrBlank()) {
