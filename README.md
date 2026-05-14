@@ -22,6 +22,21 @@ Behavior:
 - opens notification deep links using `actionUri`
 - can resume after boot when the listener is enabled
 
+## Notification Grouping
+
+CloudySky groups local notifications by metadata in this order:
+
+- `room_id`
+- `user_id`
+- `topic`
+- `type`
+
+If a notification has media metadata, it can also show a banner image and a circular avatar:
+
+- `pfp` is used for the sender avatar
+- `image` is used as a single banner image
+- `images` is treated as a multi-image set and rendered as a collage when possible
+
 ## Battery Optimizations
 
 The app can request exemption from battery optimizations. This helps keep the foreground listener stable on devices that aggressively restrict background work.

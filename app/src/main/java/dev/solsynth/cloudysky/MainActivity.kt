@@ -50,6 +50,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.solsynth.cloudysky.auth.AuthRepository
+import dev.solsynth.cloudysky.auth.AuthScreen
 import dev.solsynth.cloudysky.auth.CurrentAccount
 import dev.solsynth.cloudysky.notifications.NotificationController
 import dev.solsynth.cloudysky.notifications.NotificationListScreen
@@ -200,52 +201,5 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val TAG = "CloudySkyMain"
-    }
-}
-
-@Composable
-fun AuthScreen(
-    isSignedIn: Boolean,
-    currentAccount: CurrentAccount?,
-    loadingAccount: Boolean,
-    onSignIn: () -> Unit,
-    onSignOut: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors()
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(text = if (isSignedIn) "Signed in" else "Signed out")
-                Text(text = "OIDC via AppAuth is wired up.")
-                if (loadingAccount) {
-                    Text(text = "Loading account...")
-                } else if (currentAccount != null) {
-                    Text(text = currentAccount.displayName)
-                    Text(text = currentAccount.bio.ifBlank { currentAccount.language })
-                }
-                Button(onClick = if (isSignedIn) onSignOut else onSignIn) {
-                    Text(text = if (isSignedIn) "Sign out" else "Sign in")
-                }
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AuthScreenPreview() {
-    CloudySkyTheme {
-        AuthScreen(isSignedIn = false, currentAccount = null, loadingAccount = false, onSignIn = {}, onSignOut = {})
     }
 }
