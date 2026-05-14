@@ -33,8 +33,10 @@ enum class SopRunState {
 
 data class SopState(
     val enabled: Boolean = true,
-    val mode: SopListenerMode = SopListenerMode.Dynamic,
+    val mode: SopListenerMode = SopListenerMode.Stream,
     val dynamicConfig: SopDynamicConfig = SopDynamicConfig(),
+    val autoStartOnBoot: Boolean = true,
+    val silentMode: Boolean = false,
     val token: String? = null,
     val subscriptionId: String? = null,
     val deviceId: String? = null,
@@ -55,9 +57,11 @@ enum class SopListenerStatus {
 
 data class SopListenerSnapshot(
     val enabled: Boolean = true,
-    val mode: SopListenerMode = SopListenerMode.Dynamic,
+    val mode: SopListenerMode = SopListenerMode.Stream,
     val runState: SopRunState = SopRunState.Idle,
     val dynamicConfig: SopDynamicConfig = SopDynamicConfig(),
+    val autoStartOnBoot: Boolean = true,
+    val silentMode: Boolean = false,
     val status: SopListenerStatus = SopListenerStatus.Idle,
     val isIgnoringBatteryOptimizations: Boolean = false,
     val hasNotificationPermission: Boolean = true,

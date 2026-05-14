@@ -74,6 +74,8 @@ fun SettingsScreen(
     onToggleSopListener: (Boolean) -> Unit,
     onSetMode: (SopListenerMode) -> Unit,
     onSetDynamicConfig: (SopDynamicConfig) -> Unit,
+    onSetAutoStartOnBoot: (Boolean) -> Unit,
+    onSetSilentMode: (Boolean) -> Unit,
     onOpenBatteryOptimizationSettings: () -> Unit,
     onLogoutClick: () -> Unit,
     onClearLog: () -> Unit,
@@ -178,9 +180,9 @@ fun SettingsScreen(
                         }
                         Text(
                             text = when (sopState.mode) {
-                                SopListenerMode.Stream -> "Real-time SSE streaming. Best latency, higher battery usage."
-                                SopListenerMode.Polling -> "Periodic polling. Lowest battery usage, notifications may be delayed."
-                                SopListenerMode.Dynamic -> "Smart switching. Polls when idle, streams when active. Balanced."
+                                SopListenerMode.Stream -> "Real-time SSE streaming. Instant delivery for all notifications including messages. Recommended."
+                                SopListenerMode.Polling -> "Periodic polling. Lowest battery usage, but message notifications may be missed or delayed. Best for non-realtime alerts."
+                                SopListenerMode.Dynamic -> "Smart switching. Polls when idle, streams when active. Some message notifications may be missed during idle."
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -295,6 +297,40 @@ fun SettingsScreen(
 
                     if (!sopState.subscriptionId.isNullOrBlank()) {
                         InfoRow(label = "Subscription ID", value = sopState.subscriptionId.orEmpty())
+                    }
+
+                    if (sopState.enabled) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Auto-start on boot", style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    text = "Start listener after phone restart",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Switch(checked = sopState.autoStartOnBoot, onCheckedChange = onSetAutoStartOnBoot)
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Silent mode", style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    text = "Hide the persistent listener notification",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Switch(checked = sopState.silentMode, onCheckedChange = onSetSilentMode)
+                        }
                     }
 
                     sopState.error?.let {

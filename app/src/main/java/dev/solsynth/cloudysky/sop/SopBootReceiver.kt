@@ -9,10 +9,12 @@ class SopBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action != Intent.ACTION_BOOT_COMPLETED) return
 
-        val authRepository = AuthRepository(context.applicationContext)
-        val sopRepository = SopRepository(context.applicationContext)
-        if (authRepository.authState.value.isAuthorized && sopRepository.currentState().enabled) {
-            SopLaunchCoordinator(context.applicationContext).requestStart()
+        val appContext = context.applicationContext
+        val authRepository = AuthRepository(appContext)
+        val sopRepository = SopRepository(appContext)
+        val state = sopRepository.currentState()
+        if (authRepository.authState.value.isAuthorized && state.enabled && state.autoStartOnBoot) {
+            SopListenerService.start(appContext)
         }
     }
 }

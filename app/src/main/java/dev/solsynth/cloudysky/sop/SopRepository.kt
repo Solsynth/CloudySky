@@ -48,6 +48,16 @@ class SopRepository(context: Context) {
         _listenerState.value = snapshot(dynamicConfig = config)
     }
 
+    fun setAutoStartOnBoot(enabled: Boolean) {
+        store.save(store.load().copy(autoStartOnBoot = enabled))
+        _listenerState.value = snapshot(autoStartOnBoot = enabled)
+    }
+
+    fun setSilentMode(enabled: Boolean) {
+        store.save(store.load().copy(silentMode = enabled))
+        _listenerState.value = snapshot(silentMode = enabled)
+    }
+
     fun setLastSeenNotificationId(id: String?) {
         store.save(store.load().copy(lastSeenNotificationId = id))
     }
@@ -160,6 +170,8 @@ class SopRepository(context: Context) {
         runState: SopRunState? = null,
         mode: SopListenerMode? = null,
         dynamicConfig: SopDynamicConfig? = null,
+        autoStartOnBoot: Boolean? = null,
+        silentMode: Boolean? = null,
         error: String? = null,
     ): SopListenerSnapshot {
         val powerManager = appContext.getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -172,6 +184,8 @@ class SopRepository(context: Context) {
             mode = mode ?: state.mode,
             runState = runState ?: current.runState,
             dynamicConfig = dynamicConfig ?: state.dynamicConfig,
+            autoStartOnBoot = autoStartOnBoot ?: state.autoStartOnBoot,
+            silentMode = silentMode ?: state.silentMode,
             status = status ?: current.status,
             isIgnoringBatteryOptimizations = powerManager.isIgnoringBatteryOptimizations(appContext.packageName),
             hasNotificationPermission = notificationsEnabled,

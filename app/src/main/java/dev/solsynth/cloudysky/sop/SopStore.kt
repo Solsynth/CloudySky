@@ -30,6 +30,8 @@ class SopStore(context: Context) {
             .putString(KEY_MODE, state.mode.name)
             .putLong(KEY_POLLING_INTERVAL, state.dynamicConfig.pollingIntervalMs)
             .putLong(KEY_STREAM_TIMEOUT, state.dynamicConfig.streamTimeoutMs)
+            .putBoolean(KEY_AUTO_START_ON_BOOT, state.autoStartOnBoot)
+            .putBoolean(KEY_SILENT_MODE, state.silentMode)
             .putString(KEY_TOKEN, state.token)
             .putString(KEY_SUBSCRIPTION_ID, state.subscriptionId)
             .putString(KEY_DEVICE_ID, state.deviceId)
@@ -65,8 +67,8 @@ class SopStore(context: Context) {
     }
 
     private fun loadState(): SopState {
-        val modeName = prefs.getString(KEY_MODE, SopListenerMode.Dynamic.name) ?: SopListenerMode.Dynamic.name
-        val mode = try { SopListenerMode.valueOf(modeName) } catch (_: Exception) { SopListenerMode.Dynamic }
+        val modeName = prefs.getString(KEY_MODE, SopListenerMode.Stream.name) ?: SopListenerMode.Stream.name
+        val mode = try { SopListenerMode.valueOf(modeName) } catch (_: Exception) { SopListenerMode.Stream }
         return SopState(
             enabled = prefs.getBoolean(KEY_ENABLED, true),
             mode = mode,
@@ -74,6 +76,8 @@ class SopStore(context: Context) {
                 pollingIntervalMs = prefs.getLong(KEY_POLLING_INTERVAL, 5 * 60 * 1000),
                 streamTimeoutMs = prefs.getLong(KEY_STREAM_TIMEOUT, 10 * 60 * 1000),
             ),
+            autoStartOnBoot = prefs.getBoolean(KEY_AUTO_START_ON_BOOT, true),
+            silentMode = prefs.getBoolean(KEY_SILENT_MODE, false),
             token = prefs.getString(KEY_TOKEN, null),
             subscriptionId = prefs.getString(KEY_SUBSCRIPTION_ID, null),
             deviceId = prefs.getString(KEY_DEVICE_ID, null),
@@ -89,6 +93,8 @@ class SopStore(context: Context) {
         const val KEY_MODE = "mode"
         const val KEY_POLLING_INTERVAL = "polling_interval_ms"
         const val KEY_STREAM_TIMEOUT = "stream_timeout_ms"
+        const val KEY_AUTO_START_ON_BOOT = "auto_start_on_boot"
+        const val KEY_SILENT_MODE = "silent_mode"
         const val KEY_TOKEN = "token"
         const val KEY_SUBSCRIPTION_ID = "subscription_id"
         const val KEY_DEVICE_ID = "device_id"

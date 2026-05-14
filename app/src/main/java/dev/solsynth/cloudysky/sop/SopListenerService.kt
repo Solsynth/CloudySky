@@ -53,6 +53,10 @@ class SopListenerService : android.app.Service() {
                 stopSelf()
                 return START_NOT_STICKY
             }
+            ACTION_UPDATE_NOTIFICATION -> {
+                updateForegroundNotification()
+                return START_STICKY
+            }
             else -> {
                 stopRequested = false
                 if (activeJob?.isActive == true || pollingJob?.isActive == true) {
@@ -146,6 +150,7 @@ class SopListenerService : android.app.Service() {
         serviceScope.launch(Dispatchers.IO) {
             try {
                 val registration = repository.ensureRegistration().getOrElse {
+                    if (it is kotlinx.coroutines.CancellationException) return@launch
                     Log.e(TAG, "Polling registration failed", it)
                     return@launch
                 }
@@ -189,6 +194,8 @@ class SopListenerService : android.app.Service() {
                         }
                     }
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // Service stopped, expected
             } catch (e: Exception) {
                 Log.e(TAG, "Polling failed", e)
             }
@@ -206,47 +213,52 @@ class SopListenerService : android.app.Service() {
         activeJob?.cancel()
         eventSource?.cancel()
         activeJob = serviceScope.launch {
-            val registration = repository.ensureRegistration().getOrElse {
-                repository.updateStatus(SopListenerStatus.Failed, it.message)
-                scheduleReconnect()
-                return@launch
-            }
-
-            repository.updateStatus(SopListenerStatus.Connecting)
-            eventSource = streamClient.connect(registration.token, object : SopStreamClient.Listener {
-                override fun onOpen() {
-                    reconnectAttempt = 0
-                    repository.updateStatus(SopListenerStatus.Connecting)
-                }
-
-                override fun onReady(payload: String) {
-                    Log.d(TAG, "stream ready: $payload")
-                    repository.updateStatus(SopListenerStatus.Connected)
-                    resetStreamTimeout()
-                }
-
-                override fun onNotification(notification: NotificationItem) {
-                    logger.logNotification(notification.title, notification.topic)
-                    notifier.showNotification(notification)
-                    repository.setLastSeenNotificationId(notification.id)
-                    resetStreamTimeout()
-                }
-
-                override fun onClosed() {
-                    if (stopRequested) return
-                    repository.updateStatus(SopListenerStatus.Reconnecting)
+            try {
+                val registration = repository.ensureRegistration().getOrElse {
+                    if (it is kotlinx.coroutines.CancellationException) return@launch
+                    repository.updateStatus(SopListenerStatus.Failed, it.message)
                     scheduleReconnect()
+                    return@launch
                 }
 
-                override fun onFailure(error: Throwable?, code: Int?) {
-                    if (stopRequested) return
-                    if (code == 401 || code == 403) {
-                        repository.clearRegistration()
+                repository.updateStatus(SopListenerStatus.Connecting)
+                eventSource = streamClient.connect(registration.token, object : SopStreamClient.Listener {
+                    override fun onOpen() {
+                        reconnectAttempt = 0
+                        repository.updateStatus(SopListenerStatus.Connecting)
                     }
-                    repository.updateStatus(SopListenerStatus.Reconnecting, error?.message)
-                    scheduleReconnect()
-                }
-            })
+
+                    override fun onReady(payload: String) {
+                        Log.d(TAG, "stream ready: $payload")
+                        repository.updateStatus(SopListenerStatus.Connected)
+                        resetStreamTimeout()
+                    }
+
+                    override fun onNotification(notification: NotificationItem) {
+                        logger.logNotification(notification.title, notification.topic)
+                        notifier.showNotification(notification)
+                        repository.setLastSeenNotificationId(notification.id)
+                        resetStreamTimeout()
+                    }
+
+                    override fun onClosed() {
+                        if (stopRequested) return
+                        repository.updateStatus(SopListenerStatus.Reconnecting)
+                        scheduleReconnect()
+                    }
+
+                    override fun onFailure(error: Throwable?, code: Int?) {
+                        if (stopRequested) return
+                        if (code == 401 || code == 403) {
+                            repository.clearRegistration()
+                        }
+                        repository.updateStatus(SopListenerStatus.Reconnecting, error?.message)
+                        scheduleReconnect()
+                    }
+                })
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // Service stopped, expected
+            }
         }
     }
 
@@ -291,6 +303,7 @@ class SopListenerService : android.app.Service() {
         private const val TAG = "CloudySkySopService"
         private const val ACTION_START = "dev.solsynth.cloudysky.sop.START"
         private const val ACTION_STOP = "dev.solsynth.cloudysky.sop.STOP"
+        private const val ACTION_UPDATE_NOTIFICATION = "dev.solsynth.cloudysky.sop.UPDATE_NOTIFICATION"
 
         fun start(context: Context) {
             val intent = Intent(context, SopListenerService::class.java).setAction(ACTION_START)
@@ -310,13 +323,31 @@ class SopListenerService : android.app.Service() {
                 Log.e(TAG, "failed to stop service", error)
             }
         }
+
+        fun updateNotification(context: Context) {
+            val intent = Intent(context, SopListenerService::class.java).setAction(ACTION_UPDATE_NOTIFICATION)
+            runCatching {
+                context.startService(intent)
+            }.onFailure { error ->
+                Log.e(TAG, "failed to update notification", error)
+            }
+        }
+    }
+
+    private fun updateForegroundNotification() {
+        val status = when {
+            currentRunState == SopRunState.Active -> "Listening for notifications"
+            else -> "Polling for notifications"
+        }
+        enterForeground(status)
     }
 
     private fun enterForeground(status: String): Boolean {
+        val silent = repository.currentState().silentMode
         return try {
             startForeground(
                 SopNotifier.SERVICE_NOTIFICATION_ID,
-                notifier.buildServiceNotification(status)
+                notifier.buildServiceNotification(status, silent)
             )
             true
         } catch (error: ForegroundServiceStartNotAllowedException) {

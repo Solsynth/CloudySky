@@ -220,6 +220,11 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             onSetDynamicConfig = sopRepository::setDynamicConfig,
+                            onSetAutoStartOnBoot = sopRepository::setAutoStartOnBoot,
+                            onSetSilentMode = { enabled ->
+                                sopRepository.setSilentMode(enabled)
+                                SopListenerService.updateNotification(context)
+                            },
                             onOpenBatteryOptimizationSettings = {
                                 val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
                                     .setData(Uri.parse("package:${context.packageName}"))

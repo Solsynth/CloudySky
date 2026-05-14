@@ -55,12 +55,14 @@ class SopNotifier(private val context: Context) {
         )
     }
 
-    fun buildServiceNotification(status: String): Notification {
+    fun buildServiceNotification(status: String, silent: Boolean = false): Notification {
         return NotificationCompat.Builder(context, SERVICE_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_name)
             .setContentTitle(context.getString(R.string.app_name))
             .setContentText(status)
             .setOngoing(true)
+            .setSilent(silent)
+            .setPriority(if (silent) NotificationCompat.PRIORITY_MIN else NotificationCompat.PRIORITY_LOW)
             .build()
     }
 
