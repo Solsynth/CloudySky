@@ -38,6 +38,7 @@ class SopStore(context: Context) {
             .putString(KEY_LAST_REGISTERED_AT, state.lastRegisteredAt)
             .putString(KEY_LAST_SEEN_NOTIFICATION_ID, state.lastSeenNotificationId)
             .putBoolean(KEY_PENDING_START, state.pendingStart)
+            .putString(KEY_ACCESS_TOKEN_HASH, state.accessTokenHash)
             .apply()
         _state.value = state
     }
@@ -59,6 +60,20 @@ class SopStore(context: Context) {
 
     fun setPendingStart(pendingStart: Boolean) {
         save(_state.value.copy(pendingStart = pendingStart))
+    }
+
+    fun setAccessTokenHash(hash: String?) {
+        save(_state.value.copy(accessTokenHash = hash))
+    }
+
+    fun clearIfSessionChanged(currentTokenHash: String?) {
+        val stored = _state.value.accessTokenHash
+        if (currentTokenHash != null && stored != null && stored != currentTokenHash) {
+            clearRegistration()
+            save(_state.value.copy(accessTokenHash = currentTokenHash))
+        } else if (currentTokenHash != null && stored == null) {
+            save(_state.value.copy(accessTokenHash = currentTokenHash))
+        }
     }
 
     fun clearAll() {
@@ -84,6 +99,7 @@ class SopStore(context: Context) {
             lastRegisteredAt = prefs.getString(KEY_LAST_REGISTERED_AT, null),
             lastSeenNotificationId = prefs.getString(KEY_LAST_SEEN_NOTIFICATION_ID, null),
             pendingStart = prefs.getBoolean(KEY_PENDING_START, false),
+            accessTokenHash = prefs.getString(KEY_ACCESS_TOKEN_HASH, null),
         )
     }
 
@@ -101,5 +117,6 @@ class SopStore(context: Context) {
         const val KEY_LAST_REGISTERED_AT = "last_registered_at"
         const val KEY_LAST_SEEN_NOTIFICATION_ID = "last_seen_notification_id"
         const val KEY_PENDING_START = "pending_start"
+        const val KEY_ACCESS_TOKEN_HASH = "access_token_hash"
     }
 }

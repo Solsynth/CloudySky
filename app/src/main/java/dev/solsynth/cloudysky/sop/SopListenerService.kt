@@ -15,6 +15,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.sse.EventSource
 
 class SopListenerService : android.app.Service() {
@@ -32,6 +33,19 @@ class SopListenerService : android.app.Service() {
     private var reconnectAttempt = 0
     @Volatile private var stopRequested = false
     @Volatile private var currentRunState = SopRunState.Idle
+    // ponytail: dedup set, caps at ~2000 ids then evicts oldest half
+    private val seenIds = object : LinkedHashSet<String>(256) {
+        override fun add(element: String): Boolean {
+            val added = super.add(element)
+            if (size > SEEN_IDS_MAX) {
+                synchronized(this) {
+                    val iter = iterator()
+                    repeat(size / 2) { if (iter.hasNext()) { iter.next(); iter.remove() } }
+                }
+            }
+            return added
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -162,6 +176,7 @@ class SopListenerService : android.app.Service() {
 
                 if (lastSeenId == null) {
                     notifications.firstOrNull()?.let {
+                        seenIds.add(it.id)
                         repository.setLastSeenNotificationId(it.id)
                     }
                     logger.logPolling(0)
@@ -170,7 +185,7 @@ class SopListenerService : android.app.Service() {
 
                 val lastIndex = notifications.indexOfFirst { it.id == lastSeenId }
                 val newNotifications = if (lastIndex == -1) {
-                    emptyList()
+                    notifications.filter { seenIds.add(it.id) }
                 } else {
                     notifications.take(lastIndex)
                 }
@@ -198,6 +213,30 @@ class SopListenerService : android.app.Service() {
                 // Service stopped, expected
             } catch (e: Exception) {
                 Log.e(TAG, "Polling failed", e)
+            }
+        }
+    }
+
+    private fun backfillAfterReconnect(token: String) {
+        if (stopRequested) return
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                val notifications = api.getNotifications(token, take = 10) ?: return@launch
+                val newItems = notifications.filter { seenIds.add(it.id) }
+                if (newItems.isNotEmpty()) {
+                    Log.d(TAG, "backfill found ${newItems.size} missed notifications")
+                    newItems.reversed().forEach { notification ->
+                        logger.logNotification(notification.title, notification.topic)
+                        withContext(Dispatchers.Main) {
+                            notifier.showNotification(notification)
+                        }
+                        repository.setLastSeenNotificationId(notification.id)
+                    }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // Service stopped, expected
+            } catch (e: Exception) {
+                Log.e(TAG, "backfill failed", e)
             }
         }
     }
@@ -232,9 +271,12 @@ class SopListenerService : android.app.Service() {
                         Log.d(TAG, "stream ready: $payload")
                         repository.updateStatus(SopListenerStatus.Connected)
                         resetStreamTimeout()
+                        backfillAfterReconnect(registration.token)
                     }
 
                     override fun onNotification(notification: NotificationItem) {
+                        // ponytail: de-duplicate by notification id
+                        if (!seenIds.add(notification.id)) return
                         logger.logNotification(notification.title, notification.topic)
                         notifier.showNotification(notification)
                         repository.setLastSeenNotificationId(notification.id)
@@ -301,6 +343,7 @@ class SopListenerService : android.app.Service() {
 
     companion object {
         private const val TAG = "CloudySkySopService"
+        private const val SEEN_IDS_MAX = 2000
         private const val ACTION_START = "dev.solsynth.cloudysky.sop.START"
         private const val ACTION_STOP = "dev.solsynth.cloudysky.sop.STOP"
         private const val ACTION_UPDATE_NOTIFICATION = "dev.solsynth.cloudysky.sop.UPDATE_NOTIFICATION"

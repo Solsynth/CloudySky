@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import java.security.MessageDigest
 
 class SopRepository(context: Context) {
     private val appContext = context.applicationContext
@@ -102,10 +103,17 @@ class SopRepository(context: Context) {
 
     suspend fun ensureRegistration(): Result<SopRegistration> {
         val current = store.load()
-        current.token?.takeIf { it.isNotBlank() }?.let { token ->
-            val subscriptionId = current.subscriptionId.orEmpty()
-            val deviceId = current.deviceId.orEmpty()
-            val lastRegisteredAt = current.lastRegisteredAt.orEmpty()
+        val accessToken = authRepository.accessToken()
+
+        // ponytail: detect session change via access token hash; force re-register if changed
+        val accessTokenHash = accessToken?.let { hashToken(it) }
+        store.clearIfSessionChanged(accessTokenHash)
+
+        val afterCheck = store.load()
+        afterCheck.token?.takeIf { it.isNotBlank() }?.let { token ->
+            val subscriptionId = afterCheck.subscriptionId.orEmpty()
+            val deviceId = afterCheck.deviceId.orEmpty()
+            val lastRegisteredAt = afterCheck.lastRegisteredAt.orEmpty()
             return Result.success(
                 SopRegistration(
                     token = token,
@@ -130,11 +138,12 @@ class SopRepository(context: Context) {
                 ?: return Result.failure(IllegalStateException("Failed to register SOP subscription"))
 
             store.save(
-                current.copy(
+                afterCheck.copy(
                     token = registration.token,
                     subscriptionId = registration.subscription.id,
                     deviceId = registration.subscription.deviceId,
                     lastRegisteredAt = registration.subscription.updatedAt,
+                    accessTokenHash = accessTokenHash,
                 )
             )
             _listenerState.value = snapshot(status = SopListenerStatus.Idle, error = null)
@@ -194,5 +203,12 @@ class SopRepository(context: Context) {
             subscriptionId = state.subscriptionId,
             error = error ?: current.error,
         )
+    }
+
+    companion object {
+        private fun hashToken(token: String): String {
+            val digest = MessageDigest.getInstance("SHA-256").digest(token.toByteArray())
+            return digest.joinToString("") { "%02x".format(it) }
+        }
     }
 }

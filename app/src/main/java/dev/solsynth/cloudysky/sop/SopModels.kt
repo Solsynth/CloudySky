@@ -43,6 +43,7 @@ data class SopState(
     val lastRegisteredAt: String? = null,
     val lastSeenNotificationId: String? = null,
     val pendingStart: Boolean = false,
+    val accessTokenHash: String? = null,
 )
 
 enum class SopListenerStatus {
