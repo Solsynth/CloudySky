@@ -40,7 +40,7 @@ class AuthRepository(context: Context) {
             Log.w(TAG, "client secret is empty; token exchange will fail until cloudyskyClientSecret is provided")
         }
         val request = AuthorizationRequest.Builder(
-            AuthConfig.serviceConfiguration,
+            AuthConfig.serviceConfiguration(appContext),
             AuthConfig.clientId,
             ResponseTypeValues.CODE,
             AuthConfig.redirectUri
