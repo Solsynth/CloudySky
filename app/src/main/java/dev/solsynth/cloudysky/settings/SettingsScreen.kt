@@ -35,6 +35,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -83,6 +84,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val avatarUrl = remember(currentAccount?.pictureUrl) { currentAccount?.pictureUrl }
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.settings)) },
@@ -90,9 +92,13 @@ fun SettingsScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
             )
-        }
+        },
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -100,18 +106,26 @@ fun SettingsScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Card(colors = CardDefaults.cardColors()) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (isLoadingAccount) {
-                            CircularProgressIndicator(modifier = Modifier.size(48.dp))
+                            CircularProgressIndicator(modifier = Modifier.size(48.dp), strokeWidth = 3.dp)
                         } else {
                             Card(
                                 modifier = Modifier.size(56.dp),
                                 shape = CircleShape,
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                             ) {
                                 if (!avatarUrl.isNullOrBlank()) {
                                     AsyncImage(
@@ -124,12 +138,13 @@ fun SettingsScreen(
                                     Icon(
                                         imageVector = Icons.Default.Person,
                                         contentDescription = null,
-                                        modifier = Modifier.padding(12.dp),
+                                        modifier = Modifier.padding(14.dp),
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                     )
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(14.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = currentAccount?.displayName ?: stringResource(R.string.unknown_account),
@@ -137,6 +152,7 @@ fun SettingsScreen(
                             )
                             Text(
                                 text = currentAccount?.bio?.ifBlank { currentAccount.name }.orEmpty(),
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                             )
@@ -149,7 +165,12 @@ fun SettingsScreen(
                 }
             }
 
-            Card(colors = CardDefaults.cardColors()) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -357,7 +378,12 @@ fun SettingsScreen(
                 }
             }
 
-            Card(colors = CardDefaults.cardColors()) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -366,8 +392,12 @@ fun SettingsScreen(
                     ) {
                         Text(stringResource(R.string.activity_log), style = MaterialTheme.typography.titleMedium)
                         if (logEntries.isNotEmpty()) {
-                            IconButton(onClick = onClearLog, modifier = Modifier.size(24.dp)) {
-                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.clear_log))
+                            IconButton(onClick = onClearLog) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = stringResource(R.string.clear_log),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
                     }
@@ -423,11 +453,18 @@ fun SettingsScreen(
                 }
             }
 
-            Button(onClick = onAboutClick, modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = onAboutClick,
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+            ) {
                 Text(stringResource(R.string.about))
             }
 
-            TextButton(onClick = onLogoutClick, modifier = Modifier.fillMaxWidth()) {
+            TextButton(
+                onClick = onLogoutClick,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(stringResource(R.string.log_out))
