@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
+import dev.solsynth.cloudysky.R
 import dev.solsynth.cloudysky.auth.AuthRepository
 import dev.solsynth.cloudysky.notifications.NotificationItem
 import kotlinx.coroutines.Dispatchers
@@ -133,9 +134,9 @@ class SopRepository(context: Context) {
         _listenerState.value = snapshot(status = SopListenerStatus.Registering, error = null)
         return try {
             val accessToken = authRepository.accessToken()
-                ?: return Result.failure(IllegalStateException("No access token"))
+                ?: return Result.failure(IllegalStateException(appContext.getString(R.string.no_access_token)))
             val registration = withContext(Dispatchers.IO) { api.register(accessToken) }
-                ?: return Result.failure(IllegalStateException("Failed to register SOP subscription"))
+                ?: return Result.failure(IllegalStateException(appContext.getString(R.string.failed_to_register_sop)))
 
             store.save(
                 afterCheck.copy(
@@ -159,7 +160,7 @@ class SopRepository(context: Context) {
         return try {
             val items = withContext(Dispatchers.IO) {
                 api.getNotifications(registration.token, take = take, offset = offset)
-            } ?: return Result.failure(IllegalStateException("Failed to load SOP notifications"))
+            } ?: return Result.failure(IllegalStateException(appContext.getString(R.string.failed_to_load_sop_notifications)))
             Result.success(items)
         } catch (e: Exception) {
             Result.failure(e)

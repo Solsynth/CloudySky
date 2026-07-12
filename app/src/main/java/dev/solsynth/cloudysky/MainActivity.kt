@@ -63,11 +63,11 @@ class MainActivity : ComponentActivity() {
             CloudySkyTheme {
                 val context = LocalContext.current
                 val authRepository = remember { AuthRepository(context) }
-                val notificationRepository = remember { NotificationRepository(authRepository) }
+                val notificationRepository = remember { NotificationRepository(context, authRepository) }
                 val sopRepository = remember { SopRepository(context) }
                 val sopLaunchCoordinator = remember { SopLaunchCoordinator(context) }
                 val coroutineScope = rememberCoroutineScope()
-                val notificationController = remember { NotificationController(notificationRepository, coroutineScope) }
+                val notificationController = remember { NotificationController(notificationRepository, coroutineScope, context) }
                 val authState by authRepository.authState.collectAsState()
                 val notificationState by notificationController.uiState.collectAsState()
                 val sopState by sopRepository.listenerState.collectAsState()

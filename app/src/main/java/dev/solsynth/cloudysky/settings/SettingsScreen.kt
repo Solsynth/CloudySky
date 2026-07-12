@@ -1,5 +1,6 @@
 package dev.solsynth.cloudysky.settings
 
+import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,8 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
@@ -18,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -38,7 +36,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,9 +45,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import dev.solsynth.cloudysky.R
 import dev.solsynth.cloudysky.auth.CurrentAccount
 import dev.solsynth.cloudysky.sop.SopDynamicConfig
 import dev.solsynth.cloudysky.sop.SopLogEntryType
@@ -80,14 +80,15 @@ fun SettingsScreen(
     onLogoutClick: () -> Unit,
     onClearLog: () -> Unit,
 ) {
+    val context = LocalContext.current
     val avatarUrl = remember(currentAccount?.pictureUrl) { currentAccount?.pictureUrl }
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -115,7 +116,7 @@ fun SettingsScreen(
                                 if (!avatarUrl.isNullOrBlank()) {
                                     AsyncImage(
                                         model = avatarUrl,
-                                        contentDescription = "Profile picture",
+                                        contentDescription = stringResource(R.string.profile_picture_cd),
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier.fillMaxSize().clip(CircleShape),
                                     )
@@ -130,13 +131,20 @@ fun SettingsScreen(
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(text = currentAccount?.displayName ?: "Unknown account", style = MaterialTheme.typography.titleMedium)
-                            Text(text = currentAccount?.bio?.ifBlank { currentAccount.name }.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                            Text(
+                                text = currentAccount?.displayName ?: stringResource(R.string.unknown_account),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            Text(
+                                text = currentAccount?.bio?.ifBlank { currentAccount.name }.orEmpty(),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                            )
                         }
                     }
 
                     currentAccount?.let {
-                        InfoRow(label = "Account ID", value = it.id)
+                        InfoRow(label = stringResource(R.string.account_id), value = it.id)
                     }
                 }
             }
@@ -149,9 +157,13 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Always-on SOP listener", style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.always_on_sop_listener), style = MaterialTheme.typography.titleMedium)
                             Text(
-                                text = "Status: ${sopState.status.name} | ${sopState.runState.name}",
+                                text = stringResource(
+                                    R.string.sop_status_line,
+                                    sopState.status.name,
+                                    sopState.runState.name,
+                                ),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -159,7 +171,7 @@ fun SettingsScreen(
                     }
 
                     if (sopState.enabled) {
-                        Text("Connection mode", style = MaterialTheme.typography.labelMedium)
+                        Text(stringResource(R.string.connection_mode), style = MaterialTheme.typography.labelMedium)
                         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                             SopListenerMode.entries.forEachIndexed { index, mode ->
                                 SegmentedButton(
@@ -169,9 +181,9 @@ fun SettingsScreen(
                                 ) {
                                     Text(
                                         text = when (mode) {
-                                            SopListenerMode.Stream -> "Stream"
-                                            SopListenerMode.Polling -> "Poll"
-                                            SopListenerMode.Dynamic -> "Dynamic"
+                                            SopListenerMode.Stream -> stringResource(R.string.mode_stream)
+                                            SopListenerMode.Polling -> stringResource(R.string.mode_poll)
+                                            SopListenerMode.Dynamic -> stringResource(R.string.mode_dynamic)
                                         },
                                         style = MaterialTheme.typography.labelSmall,
                                     )
@@ -180,9 +192,9 @@ fun SettingsScreen(
                         }
                         Text(
                             text = when (sopState.mode) {
-                                SopListenerMode.Stream -> "Real-time SSE streaming. Instant delivery for all notifications including messages. Recommended."
-                                SopListenerMode.Polling -> "Periodic polling. Lowest battery usage, but message notifications may be missed or delayed. Best for non-realtime alerts."
-                                SopListenerMode.Dynamic -> "Smart switching. Polls when idle, streams when active. Some message notifications may be missed during idle."
+                                SopListenerMode.Stream -> stringResource(R.string.mode_desc_stream)
+                                SopListenerMode.Polling -> stringResource(R.string.mode_desc_polling)
+                                SopListenerMode.Dynamic -> stringResource(R.string.mode_desc_dynamic)
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -201,7 +213,10 @@ fun SettingsScreen(
                             }
                             Column {
                                 Text(
-                                    text = "Polling interval: ${formatInterval(sopState.dynamicConfig.pollingIntervalMs)}",
+                                    text = stringResource(
+                                        R.string.polling_interval,
+                                        formatInterval(context, sopState.dynamicConfig.pollingIntervalMs),
+                                    ),
                                     style = MaterialTheme.typography.labelMedium,
                                 )
                                 Slider(
@@ -222,9 +237,9 @@ fun SettingsScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                 ) {
-                                    Text("1m", style = MaterialTheme.typography.labelSmall)
-                                    Text("5m", style = MaterialTheme.typography.labelSmall)
-                                    Text("10m", style = MaterialTheme.typography.labelSmall)
+                                    Text(stringResource(R.string.interval_1m), style = MaterialTheme.typography.labelSmall)
+                                    Text(stringResource(R.string.interval_5m), style = MaterialTheme.typography.labelSmall)
+                                    Text(stringResource(R.string.interval_10m), style = MaterialTheme.typography.labelSmall)
                                 }
                             }
                         }
@@ -243,7 +258,10 @@ fun SettingsScreen(
                             }
                             Column {
                                 Text(
-                                    text = "Stream timeout: ${formatInterval(sopState.dynamicConfig.streamTimeoutMs)}",
+                                    text = stringResource(
+                                        R.string.stream_timeout,
+                                        formatInterval(context, sopState.dynamicConfig.streamTimeoutMs),
+                                    ),
                                     style = MaterialTheme.typography.labelMedium,
                                 )
                                 Slider(
@@ -265,10 +283,10 @@ fun SettingsScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                 ) {
-                                    Text("5m", style = MaterialTheme.typography.labelSmall)
-                                    Text("10m", style = MaterialTheme.typography.labelSmall)
-                                    Text("15m", style = MaterialTheme.typography.labelSmall)
-                                    Text("30m", style = MaterialTheme.typography.labelSmall)
+                                    Text(stringResource(R.string.interval_5m), style = MaterialTheme.typography.labelSmall)
+                                    Text(stringResource(R.string.interval_10m), style = MaterialTheme.typography.labelSmall)
+                                    Text(stringResource(R.string.interval_15m), style = MaterialTheme.typography.labelSmall)
+                                    Text(stringResource(R.string.interval_30m), style = MaterialTheme.typography.labelSmall)
                                 }
                             }
                         }
@@ -276,27 +294,27 @@ fun SettingsScreen(
 
                     if (!sopState.isIgnoringBatteryOptimizations) {
                         Text(
-                            text = "Disable battery optimizations so the foreground listener stays connected reliably.",
+                            text = stringResource(R.string.battery_opt_settings_hint),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Button(onClick = onOpenBatteryOptimizationSettings, modifier = Modifier.fillMaxWidth()) {
-                            Text("Disable battery optimizations")
+                            Text(stringResource(R.string.disable_battery_optimizations))
                         }
                     }
 
                     if (!sopState.hasNotificationPermission) {
                         Text(
-                            text = "Notification permission is off, so incoming SOP events cannot be shown.",
+                            text = stringResource(R.string.notification_permission_off),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
 
                     if (!sopState.androidDeviceId.isNullOrBlank()) {
-                        InfoRow(label = "Device ID", value = sopState.androidDeviceId.orEmpty())
+                        InfoRow(label = stringResource(R.string.device_id), value = sopState.androidDeviceId.orEmpty())
                     }
 
                     if (!sopState.subscriptionId.isNullOrBlank()) {
-                        InfoRow(label = "Subscription ID", value = sopState.subscriptionId.orEmpty())
+                        InfoRow(label = stringResource(R.string.subscription_id), value = sopState.subscriptionId.orEmpty())
                     }
 
                     if (sopState.enabled) {
@@ -306,9 +324,9 @@ fun SettingsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Auto-start on boot", style = MaterialTheme.typography.bodyMedium)
+                                Text(stringResource(R.string.auto_start_on_boot), style = MaterialTheme.typography.bodyMedium)
                                 Text(
-                                    text = "Start listener after phone restart",
+                                    text = stringResource(R.string.auto_start_on_boot_desc),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -322,9 +340,9 @@ fun SettingsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Silent mode", style = MaterialTheme.typography.bodyMedium)
+                                Text(stringResource(R.string.silent_mode), style = MaterialTheme.typography.bodyMedium)
                                 Text(
-                                    text = "Hide the persistent listener notification",
+                                    text = stringResource(R.string.silent_mode_desc),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -346,16 +364,16 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Text("Activity Log", style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.activity_log), style = MaterialTheme.typography.titleMedium)
                         if (logEntries.isNotEmpty()) {
                             IconButton(onClick = onClearLog, modifier = Modifier.size(24.dp)) {
-                                Icon(Icons.Default.Delete, contentDescription = "Clear log")
+                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.clear_log))
                             }
                         }
                     }
                     if (logEntries.isEmpty()) {
                         Text(
-                            text = "No activity recorded yet",
+                            text = stringResource(R.string.no_activity_recorded),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -369,8 +387,8 @@ fun SettingsScreen(
                                 Column(modifier = Modifier.weight(1f)) {
                                     val (label, color) = when (entry.type) {
                                         SopLogEntryType.Notification -> entry.title to MaterialTheme.colorScheme.onSurface
-                                        SopLogEntryType.ModeSwitch -> "Mode: ${entry.title}" to MaterialTheme.colorScheme.primary
-                                        SopLogEntryType.Polling -> "Poll: ${entry.title}" to MaterialTheme.colorScheme.onSurfaceVariant
+                                        SopLogEntryType.ModeSwitch -> stringResource(R.string.log_mode_prefix, entry.title) to MaterialTheme.colorScheme.primary
+                                        SopLogEntryType.Polling -> stringResource(R.string.log_poll_prefix, entry.title) to MaterialTheme.colorScheme.onSurfaceVariant
                                     }
                                     Text(
                                         text = label,
@@ -388,7 +406,7 @@ fun SettingsScreen(
                                     }
                                 }
                                 Text(
-                                    text = formatLogTimestamp(entry.timestamp),
+                                    text = formatLogTimestamp(context, entry.timestamp),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -396,7 +414,7 @@ fun SettingsScreen(
                         }
                         if (logEntries.size > 10) {
                             Text(
-                                text = "+ ${logEntries.size - 10} more entries",
+                                text = stringResource(R.string.log_more_entries, logEntries.size - 10),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -406,13 +424,13 @@ fun SettingsScreen(
             }
 
             Button(onClick = onAboutClick, modifier = Modifier.fillMaxWidth()) {
-                Text("About")
+                Text(stringResource(R.string.about))
             }
 
             TextButton(onClick = onLogoutClick, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Log out")
+                Text(stringResource(R.string.log_out))
             }
         }
     }
@@ -432,21 +450,25 @@ fun InfoRow(label: String, value: String, icon: androidx.compose.ui.graphics.vec
     }
 }
 
-fun formatLogTimestamp(timestamp: Long): String {
+fun formatLogTimestamp(context: Context, timestamp: Long): String {
     val instant = Instant.ofEpochMilli(timestamp)
     val zoned = instant.atZone(ZoneId.systemDefault())
     val now = java.time.ZonedDateTime.now()
     val duration = java.time.Duration.between(zoned, now)
     return when {
-        duration.toMinutes() < 1 -> "Just now"
-        duration.toMinutes() < 60 -> "${duration.toMinutes()}m ago"
-        duration.toHours() < 24 -> "${duration.toHours()}h ago"
-        duration.toDays() < 7 -> "${duration.toDays()}d ago"
+        duration.toMinutes() < 1 -> context.getString(R.string.just_now)
+        duration.toMinutes() < 60 -> context.getString(R.string.time_minutes_ago, duration.toMinutes())
+        duration.toHours() < 24 -> context.getString(R.string.time_hours_ago, duration.toHours())
+        duration.toDays() < 7 -> context.getString(R.string.time_days_ago, duration.toDays())
         else -> zoned.format(DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()))
     }
 }
 
-fun formatInterval(ms: Long): String {
+fun formatInterval(context: Context, ms: Long): String {
     val minutes = ms / 60_000
-    return if (minutes < 60) "${minutes}m" else "${minutes / 60}h ${minutes % 60}m"
+    return if (minutes < 60) {
+        context.getString(R.string.interval_minutes, minutes)
+    } else {
+        context.getString(R.string.interval_hours_minutes, minutes / 60, minutes % 60)
+    }
 }

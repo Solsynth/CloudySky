@@ -6,6 +6,7 @@ import android.app.ForegroundServiceStartNotAllowedException
 import android.os.IBinder
 import android.util.Log
 import androidx.core.content.ContextCompat
+import dev.solsynth.cloudysky.R
 import dev.solsynth.cloudysky.notifications.NotificationItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -53,9 +54,9 @@ class SopListenerService : android.app.Service() {
         notifier = SopNotifier(applicationContext)
         logger = SopNotificationLogger(applicationContext)
         notifier.ensureChannels()
-        if (!enterForeground("Starting notification listener")) {
+        if (!enterForeground(getString(R.string.sop_fg_starting))) {
             repository.requestStart()
-            repository.updateStatus(SopListenerStatus.Failed, "Foreground start blocked by system")
+            repository.updateStatus(SopListenerStatus.Failed, getString(R.string.sop_fg_start_blocked))
             stopSelf()
         }
     }
@@ -119,7 +120,7 @@ class SopListenerService : android.app.Service() {
         currentRunState = SopRunState.Idle
         repository.updateRunState(SopRunState.Idle)
         repository.updateStatus(SopListenerStatus.Idle)
-        enterForeground("Polling for notifications")
+        enterForeground(getString(R.string.sop_fg_polling))
 
         if (previousState == SopRunState.Active) {
             logger.logModeSwitch(SopRunState.Active, SopRunState.Idle)
@@ -147,7 +148,7 @@ class SopListenerService : android.app.Service() {
         val previousState = currentRunState
         currentRunState = SopRunState.Active
         repository.updateRunState(SopRunState.Active)
-        enterForeground("Listening for notifications")
+        enterForeground(getString(R.string.sop_fg_listening))
 
         if (previousState == SopRunState.Idle) {
             logger.logModeSwitch(SopRunState.Idle, SopRunState.Active)
@@ -379,8 +380,8 @@ class SopListenerService : android.app.Service() {
 
     private fun updateForegroundNotification() {
         val status = when {
-            currentRunState == SopRunState.Active -> "Listening for notifications"
-            else -> "Polling for notifications"
+            currentRunState == SopRunState.Active -> getString(R.string.sop_fg_listening)
+            else -> getString(R.string.sop_fg_polling)
         }
         enterForeground(status)
     }

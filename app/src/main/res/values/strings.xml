@@ -1,8 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- App -->
     <string name="app_name">CloudySky</string>
     <string name="app_auth_redirect_scheme">cloudysky</string>
+    <string name="app_tagline">Official Solar Network Android push notification companion app</string>
+    <string name="app_icon_cd">CloudySky icon</string>
+
+    <!-- Common -->
+    <string name="back">Back</string>
+    <string name="retry">Retry</string>
+    <string name="error_with_message">Error: %1$s</string>
+    <string name="just_now">Just now</string>
+    <string name="time_minutes_ago">%1$dm ago</string>
+    <string name="time_hours_ago">%1$dh ago</string>
+    <string name="time_days_ago">%1$dd ago</string>
+    <string name="profile_picture_cd">Profile picture</string>
+
+    <!-- Auth -->
     <string name="login">Sign in</string>
     <string name="logout">Sign out</string>
+    <string name="log_out">Log out</string>
     <string name="auth_status_signed_out">Signed out</string>
     <string name="auth_status_signed_in">Signed in</string>
+    <string name="account">Account</string>
+    <string name="loading_account">Loading account…</string>
+    <string name="not_signed_in">Not signed in</string>
+    <string name="sign_in_prompt">Sign in to sync your notifications and settings</string>
+    <string name="sign_in_with_solar">Sign in with Solar Network</string>
+    <string name="unknown_account">Unknown account</string>
+    <string name="account_id">Account ID</string>
+
+    <!-- Notifications -->
+    <string name="notifications">Notifications</string>
+    <string name="refresh">Refresh</string>
+    <string name="settings">Settings</string>
+    <string name="no_notifications_yet">No notifications yet</string>
+    <string name="failed_to_load_notifications">Failed to load notifications</string>
+    <string name="no_access_token">No access token</string>
+    <string name="battery_opt_banner_title">Battery optimization may kill the notification listener</string>
+    <string name="battery_opt_banner_body">Disable it to keep receiving push notifications reliably in the background.</string>
+    <string name="disable_battery_optimization">Disable battery optimization</string>
+    <string name="disable_battery_optimizations">Disable battery optimizations</string>
+    <string name="battery_opt_settings_hint">Disable battery optimizations so the foreground listener stays connected reliably.</string>
+
+    <!-- SOP status -->
+    <string name="mode_stream">Stream</string>
+    <string name="mode_polling">Polling</string>
+    <string name="mode_poll">Poll</string>
+    <string name="mode_dynamic">Dynamic</string>
+    <string name="run_state_idle">idle</string>
+    <string name="run_state_active">active</string>
+    <string name="sop_status_streaming">%1$s mode, streaming (%2$s)</string>
+    <string name="sop_status_connecting">Connecting…</string>
+    <string name="sop_status_reconnecting">Reconnecting…</string>
+    <string name="sop_status_failed">Connection failed</string>
+    <string name="sop_status_registering">Registering device…</string>
+    <string name="sop_status_idle">%1$s mode, %2$s</string>
+    <string name="sop_status_mode_only">%1$s mode</string>
+    <string name="sop_status_line">Status: %1$s | %2$s</string>
+
+    <!-- Settings / SOP listener -->
+    <string name="always_on_sop_listener">Always-on SOP listener</string>
+    <string name="connection_mode">Connection mode</string>
+    <string name="mode_desc_stream">Real-time SSE streaming. Instant delivery for all notifications including messages. Recommended.</string>
+    <string name="mode_desc_polling">Periodic polling. Lowest battery usage, but message notifications may be missed or delayed. Best for non-realtime alerts.</string>
+    <string name="mode_desc_dynamic">Smart switching. Polls when idle, streams when active. Some message notifications may be missed during idle.</string>
+    <string name="polling_interval">Polling interval: %1$s</string>
+    <string name="stream_timeout">Stream timeout: %1$s</string>
+    <string name="interval_1m">1m</string>
+    <string name="interval_5m">5m</string>
+    <string name="interval_10m">10m</string>
+    <string name="interval_15m">15m</string>
+    <string name="interval_30m">30m</string>
+    <string name="interval_minutes">%1$dm</string>
+    <string name="interval_hours_minutes">%1$dh %2$dm</string>
+    <string name="notification_permission_off">Notification permission is off, so incoming SOP events cannot be shown.</string>
+    <string name="device_id">Device ID</string>
+    <string name="subscription_id">Subscription ID</string>
+    <string name="auto_start_on_boot">Auto-start on boot</string>
+    <string name="auto_start_on_boot_desc">Start listener after phone restart</string>
+    <string name="silent_mode">Silent mode</string>
+    <string name="silent_mode_desc">Hide the persistent listener notification</string>
+    <string name="activity_log">Activity Log</string>
+    <string name="clear_log">Clear log</string>
+    <string name="no_activity_recorded">No activity recorded yet</string>
+    <string name="log_mode_prefix">Mode: %1$s</string>
+    <string name="log_poll_prefix">Poll: %1$s</string>
+    <string name="log_more_entries">+ %1$d more entries</string>
+    <string name="log_polling_new">%1$d new</string>
+    <string name="log_polling_none">no new</string>
+    <string name="about">About</string>
+
+    <!-- About -->
+    <string name="app_info">App Info</string>
+    <string name="version">Version</string>
+    <string name="version_value">%1$s (%2$d)</string>
+    <string name="build">Build</string>
+    <string name="updates">Updates</string>
+    <string name="checking_for_updates">Checking for updates…</string>
+    <string name="update_available">Update available: %1$s</string>
+    <string name="download_update">Download Update</string>
+    <string name="failed_to_check_updates">Failed to check for updates</string>
+    <string name="up_to_date">You\'re up to date!</string>
+    <string name="check_again">Check Again</string>
+    <string name="check_for_updates">Check for Updates</string>
+    <string name="made_by_team">Made by the Solar Network Team with ❤️</string>
+    <string name="open_sourced_license">Open-sourced under APGL v3 license</string>
+    <string name="github_repo">github.com/Solsynth/CloudySky</string>
+
+    <!-- Notification channels & system notifications -->
+    <string name="channel_sop_listener">SOP listener</string>
+    <string name="channel_notifications">Notifications</string>
+    <string name="new_notification">New notification</string>
+    <string name="sender_fallback">Sender</string>
+    <string name="chat_fallback">Chat</string>
+    <string name="message_fallback">Message</string>
+    <string name="reply">Reply</string>
+    <string name="media_items_count">%1$d media items</string>
+    <string name="new_items_count">%1$d new items</string>
+    <string name="sop_fg_starting">Starting notification listener</string>
+    <string name="sop_fg_polling">Polling for notifications</string>
+    <string name="sop_fg_listening">Listening for notifications</string>
+    <string name="sop_fg_start_blocked">Foreground start blocked by system</string>
+    <string name="failed_to_register_sop">Failed to register SOP subscription</string>
+    <string name="failed_to_load_sop_notifications">Failed to load SOP notifications</string>
+    <string name="failed_to_send_reply">Failed to send reply: %1$d %2$s</string>
 </resources>

@@ -1,5 +1,7 @@
 package dev.solsynth.cloudysky.notifications
 
+import android.content.Context
+import dev.solsynth.cloudysky.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,7 +12,9 @@ import kotlinx.coroutines.launch
 class NotificationController(
     private val repository: NotificationRepository,
     private val scope: CoroutineScope,
+    context: Context,
 ) {
+    private val appContext = context.applicationContext
     private val pageSize = 20
     private val _uiState = MutableStateFlow(NotificationUiState())
     val uiState: StateFlow<NotificationUiState> = _uiState.asStateFlow()
@@ -59,7 +63,7 @@ class NotificationController(
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         isLoadingMore = false,
-                        error = exception.message ?: "Failed to load notifications",
+                        error = exception.message ?: appContext.getString(R.string.failed_to_load_notifications),
                     )
                 }
             )

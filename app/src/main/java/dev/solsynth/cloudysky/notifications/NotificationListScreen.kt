@@ -1,5 +1,6 @@
 package dev.solsynth.cloudysky.notifications
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
@@ -45,7 +46,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -57,9 +57,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import dev.solsynth.cloudysky.R
 import dev.solsynth.cloudysky.auth.CurrentAccount
 import dev.solsynth.cloudysky.sop.SopListenerMode
 import dev.solsynth.cloudysky.sop.SopListenerSnapshot
@@ -103,7 +105,7 @@ fun NotificationListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Notifications") },
+                title = { Text(stringResource(R.string.notifications)) },
                 actions = {
                     if (uiState.isLoading) {
                         CircularProgressIndicator(
@@ -114,12 +116,12 @@ fun NotificationListScreen(
                         )
                     } else {
                         IconButton(onClick = onRefresh) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                            Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.refresh))
                         }
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings))
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                 }
@@ -151,7 +153,7 @@ fun NotificationListScreen(
                                 if (!currentAccount.pictureUrl.isNullOrBlank()) {
                                     AsyncImage(
                                         model = currentAccount.pictureUrl,
-                                        contentDescription = "Profile picture",
+                                        contentDescription = stringResource(R.string.profile_picture_cd),
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier.fillMaxSize(),
                                     )
@@ -189,12 +191,12 @@ fun NotificationListScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Text(
-                                text = "Battery optimization may kill the notification listener",
+                                text = stringResource(R.string.battery_opt_banner_title),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                             )
                             Text(
-                                text = "Disable it to keep receiving push notifications reliably in the background.",
+                                text = stringResource(R.string.battery_opt_banner_body),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                             )
@@ -202,7 +204,7 @@ fun NotificationListScreen(
                                 onClick = onOpenBatteryOptimizationSettings,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Text("Disable battery optimization")
+                                Text(stringResource(R.string.disable_battery_optimization))
                             }
                         }
                     }
@@ -216,22 +218,22 @@ fun NotificationListScreen(
                         else -> MaterialTheme.colorScheme.surfaceVariant
                     }
                     val modeLabel = when (sopState.mode) {
-                        SopListenerMode.Stream -> "Stream"
-                        SopListenerMode.Polling -> "Polling"
-                        SopListenerMode.Dynamic -> "Dynamic"
+                        SopListenerMode.Stream -> stringResource(R.string.mode_stream)
+                        SopListenerMode.Polling -> stringResource(R.string.mode_polling)
+                        SopListenerMode.Dynamic -> stringResource(R.string.mode_dynamic)
                     }
                     val runStateLabel = when (sopState.runState) {
-                        SopRunState.Idle -> "idle"
-                        SopRunState.Active -> "active"
+                        SopRunState.Idle -> stringResource(R.string.run_state_idle)
+                        SopRunState.Active -> stringResource(R.string.run_state_active)
                     }
                     val statusText = when (sopState.status) {
-                        SopListenerStatus.Connected -> "$modeLabel mode, streaming ($runStateLabel)"
-                        SopListenerStatus.Connecting -> "Connecting..."
-                        SopListenerStatus.Reconnecting -> "Reconnecting..."
-                        SopListenerStatus.Failed -> "Connection failed"
-                        SopListenerStatus.Registering -> "Registering device..."
-                        SopListenerStatus.Idle -> "$modeLabel mode, $runStateLabel"
-                        else -> "$modeLabel mode"
+                        SopListenerStatus.Connected -> stringResource(R.string.sop_status_streaming, modeLabel, runStateLabel)
+                        SopListenerStatus.Connecting -> stringResource(R.string.sop_status_connecting)
+                        SopListenerStatus.Reconnecting -> stringResource(R.string.sop_status_reconnecting)
+                        SopListenerStatus.Failed -> stringResource(R.string.sop_status_failed)
+                        SopListenerStatus.Registering -> stringResource(R.string.sop_status_registering)
+                        SopListenerStatus.Idle -> stringResource(R.string.sop_status_idle, modeLabel, runStateLabel)
+                        else -> stringResource(R.string.sop_status_mode_only, modeLabel)
                     }
                     Card(
                         modifier = Modifier
@@ -327,6 +329,7 @@ fun NotificationItem(
     notification: NotificationItem,
     onClick: () -> Unit,
 ) {
+    val context = LocalContext.current
     val icon = when {
         notification.topic.contains("chat", ignoreCase = true) || notification.topic.contains("invite", ignoreCase = true) -> Icons.AutoMirrored.Filled.Chat
         notification.topic.contains("reply", ignoreCase = true) -> Icons.AutoMirrored.Filled.Comment
@@ -390,7 +393,7 @@ fun NotificationItem(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = formatTime(notification.createdAt),
+                    text = formatTime(context, notification.createdAt),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -406,7 +409,7 @@ fun EmptyContent() {
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = "No notifications yet",
+            text = stringResource(R.string.no_notifications_yet),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -424,28 +427,28 @@ fun ErrorContent(
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "Error: $message",
+                text = stringResource(R.string.error_with_message, message),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.error,
             )
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = onRetry) {
-                Text("Retry")
+                Text(stringResource(R.string.retry))
             }
         }
     }
 }
 
-fun formatTime(isoTime: String): String {
+fun formatTime(context: Context, isoTime: String): String {
     return try {
         val zonedTime = ZonedDateTime.parse(isoTime)
         val duration = Duration.between(zonedTime, ZonedDateTime.now())
 
         when {
-            duration.toMinutes() < 1 -> "Just now"
-            duration.toMinutes() < 60 -> "${duration.toMinutes()}m ago"
-            duration.toHours() < 24 -> "${duration.toHours()}h ago"
-            duration.toDays() < 7 -> "${duration.toDays()}d ago"
+            duration.toMinutes() < 1 -> context.getString(R.string.just_now)
+            duration.toMinutes() < 60 -> context.getString(R.string.time_minutes_ago, duration.toMinutes())
+            duration.toHours() < 24 -> context.getString(R.string.time_hours_ago, duration.toHours())
+            duration.toDays() < 7 -> context.getString(R.string.time_days_ago, duration.toDays())
             else -> zonedTime.format(DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()))
         }
     } catch (e: Exception) {

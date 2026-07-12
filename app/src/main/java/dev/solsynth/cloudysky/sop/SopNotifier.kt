@@ -42,14 +42,14 @@ class SopNotifier(private val context: Context) {
         notificationManager.createNotificationChannel(
             NotificationChannel(
                 SERVICE_CHANNEL_ID,
-                "SOP listener",
+                context.getString(R.string.channel_sop_listener),
                 NotificationManager.IMPORTANCE_LOW,
             )
         )
         notificationManager.createNotificationChannel(
             NotificationChannel(
                 EVENTS_CHANNEL_ID,
-                "Notifications",
+                context.getString(R.string.channel_notifications),
                 NotificationManager.IMPORTANCE_HIGH,
             )
         )
@@ -97,7 +97,7 @@ class SopNotifier(private val context: Context) {
         val body = item.content.ifBlank { item.subtitle.ifBlank { item.title } }
         return NotificationCompat.Builder(context, EVENTS_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_name)
-            .setContentTitle(item.title.ifBlank { "New notification" })
+            .setContentTitle(item.title.ifBlank { context.getString(R.string.new_notification) })
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setGroup(groupKey)
@@ -119,7 +119,7 @@ class SopNotifier(private val context: Context) {
             }
         }
         val sender = Person.Builder()
-            .setName(item.senderName.ifBlank { item.title.ifBlank { "Sender" } })
+            .setName(item.senderName.ifBlank { item.title.ifBlank { context.getString(R.string.sender_fallback) } })
             .apply {
                 if (avatarBitmap != null) {
                     setIcon(IconCompat.createWithBitmap(circleCrop(avatarBitmap)))
@@ -127,7 +127,7 @@ class SopNotifier(private val context: Context) {
             }
             .build()
         val style = NotificationCompat.MessagingStyle(sender)
-            .setConversationTitle(item.roomName.ifBlank { item.title.ifBlank { "Chat" } })
+            .setConversationTitle(item.roomName.ifBlank { item.title.ifBlank { context.getString(R.string.chat_fallback) } })
             .addMessage(item.content.ifBlank { item.subtitle }, System.currentTimeMillis(), sender)
 
         val replyIntent = Intent(context, SopReplyReceiver::class.java).apply {
@@ -142,12 +142,13 @@ class SopNotifier(private val context: Context) {
             replyIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
         )
+        val replyLabel = context.getString(R.string.reply)
         val remoteInput = RemoteInput.Builder(SopReplyReceiver.KEY_REPLY_TEXT)
-            .setLabel("Reply")
+            .setLabel(replyLabel)
             .build()
         val replyAction = NotificationCompat.Action.Builder(
             android.R.drawable.ic_menu_send,
-            "Reply",
+            replyLabel,
             replyPendingIntent,
         )
             .addRemoteInput(remoteInput)
@@ -156,7 +157,7 @@ class SopNotifier(private val context: Context) {
 
         return NotificationCompat.Builder(context, EVENTS_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_name)
-            .setContentTitle(item.roomName.ifBlank { item.title.ifBlank { "Message" } })
+            .setContentTitle(item.roomName.ifBlank { item.title.ifBlank { context.getString(R.string.message_fallback) } })
             .setContentText(item.content.ifBlank { item.subtitle })
             .setSubText(richMediaSummary(item))
             .setLargeIcon(avatarBitmap?.let(::circleCrop))
@@ -191,7 +192,7 @@ class SopNotifier(private val context: Context) {
         val content = item.content.ifBlank { item.subtitle.ifBlank { item.title } }
         return NotificationCompat.Builder(context, EVENTS_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_name)
-            .setContentTitle(item.title.ifBlank { "New notification" })
+            .setContentTitle(item.title.ifBlank { context.getString(R.string.new_notification) })
             .setContentText(content)
             .setSubText(richMediaSummary(item))
             .setLargeIcon(avatarBitmap?.let(::circleCrop))
@@ -294,7 +295,7 @@ class SopNotifier(private val context: Context) {
             if (item.imageId.isNotBlank()) add("image")
             addAll(item.imageIds)
         }.size
-        return if (count > 1) "$count media items" else null
+        return if (count > 1) context.getString(R.string.media_items_count, count) else null
     }
 
     private fun notificationGroupKey(item: NotificationItem): String {
@@ -329,7 +330,7 @@ class SopNotifier(private val context: Context) {
         val summary = NotificationCompat.Builder(context, EVENTS_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_name)
             .setContentTitle(summaryText)
-            .setContentText("$activeCount new items")
+            .setContentText(context.getString(R.string.new_items_count, activeCount))
             .setStyle(NotificationCompat.InboxStyle().setSummaryText(summaryText))
             .setGroup(groupKey)
             .setGroupSummary(true)

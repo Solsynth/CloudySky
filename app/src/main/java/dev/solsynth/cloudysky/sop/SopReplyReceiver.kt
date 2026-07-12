@@ -24,8 +24,9 @@ class SopReplyReceiver : BroadcastReceiver() {
 
         if (roomId.isBlank() || replyText.isBlank()) return
 
-        val authRepository = AuthRepository(context.applicationContext)
-        val api = SopChatApi(authRepository)
+        val appContext = context.applicationContext
+        val authRepository = AuthRepository(appContext)
+        val api = SopChatApi(appContext, authRepository)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         scope.launch {
             val result = api.sendReply(roomId = roomId, content = replyText, repliedMessageId = repliedMessageId)

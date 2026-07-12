@@ -1,6 +1,8 @@
 package dev.solsynth.cloudysky.sop
 
+import android.content.Context
 import android.util.Log
+import dev.solsynth.cloudysky.R
 import dev.solsynth.cloudysky.auth.AuthRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -9,12 +11,15 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 class SopChatApi(
+    context: Context,
     private val authRepository: AuthRepository,
 ) {
+    private val appContext = context.applicationContext
+
     suspend fun sendReply(roomId: String, content: String, repliedMessageId: String? = null): Result<Unit> {
         return try {
             val accessToken = authRepository.accessToken()
-                ?: return Result.failure(IllegalStateException("No access token"))
+                ?: return Result.failure(IllegalStateException(appContext.getString(R.string.no_access_token)))
 
             val status = withContext(Dispatchers.IO) {
                 val url = URL("$baseUrl/messager/chat/$roomId/messages")
@@ -45,7 +50,11 @@ class SopChatApi(
             }
 
             if (status.first !in 200..299) {
-                return Result.failure(IllegalStateException("Failed to send reply: ${status.first} ${status.second}"))
+                return Result.failure(
+                    IllegalStateException(
+                        appContext.getString(R.string.failed_to_send_reply, status.first, status.second)
+                    )
+                )
             }
 
             Result.success(Unit)

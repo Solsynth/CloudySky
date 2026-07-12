@@ -25,7 +25,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.solsynth.cloudysky.R
@@ -92,10 +92,10 @@ fun AboutScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("About") },
+                title = { Text(stringResource(R.string.about)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -114,17 +114,17 @@ fun AboutScreen(
 
             Image(
                 painter = painterResource(R.mipmap.ic_launcher_foreground),
-                contentDescription = "CloudySky icon",
+                contentDescription = stringResource(R.string.app_icon_cd),
                 modifier = Modifier.size(96.dp),
             )
 
             Text(
-                text = "CloudySky",
+                text = stringResource(R.string.app_name),
                 style = MaterialTheme.typography.headlineMedium,
             )
 
             Text(
-                text = "Official Solar Network Android push notification companion app",
+                text = stringResource(R.string.app_tagline),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -142,12 +142,15 @@ fun AboutScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Text(
-                        text = "App Info",
+                        text = stringResource(R.string.app_info),
                         style = MaterialTheme.typography.titleMedium,
                     )
 
-                    InfoRow(label = "Version", value = "$versionName ($versionCode)")
-                    InfoRow(label = "Build", value = buildType)
+                    InfoRow(
+                        label = stringResource(R.string.version),
+                        value = stringResource(R.string.version_value, versionName, versionCode),
+                    )
+                    InfoRow(label = stringResource(R.string.build), value = buildType)
                 }
             }
 
@@ -160,7 +163,7 @@ fun AboutScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Text(
-                        text = "Updates",
+                        text = stringResource(R.string.updates),
                         style = MaterialTheme.typography.titleMedium,
                     )
 
@@ -172,7 +175,7 @@ fun AboutScreen(
                             ) {
                                 CircularProgressIndicator(modifier = Modifier.size(24.dp))
                                 Text(
-                                    text = "Checking for updates...",
+                                    text = stringResource(R.string.checking_for_updates),
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
@@ -188,7 +191,7 @@ fun AboutScreen(
                                     tint = MaterialTheme.colorScheme.primary,
                                 )
                                 Text(
-                                    text = "Update available: ${latestRelease!!.tagName}",
+                                    text = stringResource(R.string.update_available, latestRelease!!.tagName),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.primary,
                                 )
@@ -205,12 +208,12 @@ fun AboutScreen(
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Text("Download Update")
+                                Text(stringResource(R.string.download_update))
                             }
                         }
                         checkError -> {
                             Text(
-                                text = "Failed to check for updates",
+                                text = stringResource(R.string.failed_to_check_updates),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.error,
                             )
@@ -218,7 +221,7 @@ fun AboutScreen(
                                 onClick = { checkForUpdates() },
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Text("Retry")
+                                Text(stringResource(R.string.retry))
                             }
                         }
                         latestRelease != null -> {
@@ -232,7 +235,7 @@ fun AboutScreen(
                                     tint = MaterialTheme.colorScheme.primary,
                                 )
                                 Text(
-                                    text = "You're up to date!",
+                                    text = stringResource(R.string.up_to_date),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.primary,
                                 )
@@ -241,7 +244,7 @@ fun AboutScreen(
                                 onClick = { checkForUpdates() },
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Text("Check Again")
+                                Text(stringResource(R.string.check_again))
                             }
                         }
                         else -> {
@@ -249,7 +252,7 @@ fun AboutScreen(
                                 onClick = { checkForUpdates() },
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Text("Check for Updates")
+                                Text(stringResource(R.string.check_for_updates))
                             }
                         }
                     }
@@ -265,11 +268,11 @@ fun AboutScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        text = "Made by the Solar Network Team with ❤️",
+                        text = stringResource(R.string.made_by_team),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Text(
-                        text = "Open-sourced under APGL v3 license",
+                        text = stringResource(R.string.open_sourced_license),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -282,7 +285,7 @@ fun AboutScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "github.com/Solsynth/CloudySky",
+                            text = stringResource(R.string.github_repo),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
                         )
