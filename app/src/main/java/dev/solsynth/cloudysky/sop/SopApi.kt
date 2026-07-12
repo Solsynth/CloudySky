@@ -1,6 +1,7 @@
 package dev.solsynth.cloudysky.sop
 
 import android.util.Log
+import dev.solsynth.cloudysky.BuildConfig
 import dev.solsynth.cloudysky.notifications.NotificationItem
 import dev.solsynth.cloudysky.notifications.parseNotificationItem
 import org.json.JSONArray
@@ -15,13 +16,35 @@ class SopApi {
 
         return try {
             connection.requestMethod = "POST"
-            connection.doOutput = false
+            connection.doOutput = true
             connection.setRequestProperty("Authorization", "Bearer $accessToken")
             connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("Content-Type", "application/json")
+            val requestBody = JSONObject()
+                .put("device_name", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+                .put("app_id", BuildConfig.APPLICATION_ID)
+                .toString()
+            connection.outputStream.bufferedWriter().use { it.write(requestBody) }
 
             val status = connection.responseCode
+            if (status !in 200..299) {
+                val errorBody = connection.errorStream
+                    ?.bufferedReader()
+                    ?.use { it.readText() }
+                    .orEmpty()
+                val responseHeaders = connection.headerFields
+                    .filterKeys { name -> name != null && name !in SENSITIVE_RESPONSE_HEADERS }
+                    .entries
+                    .joinToString(", ") { (name, values) -> "$name=${values?.joinToString()}" }
+                Log.d(
+                    TAG,
+                    "register failed: status=$status message=${connection.responseMessage} " +
+                        "headers=[$responseHeaders] body=$errorBody"
+                )
+                return null
+            }
+
             Log.d(TAG, "register: status=$status")
-            if (status !in 200..299) return null
 
             val body = connection.inputStream.bufferedReader().use { it.readText() }
             parseRegistration(body)
@@ -102,5 +125,6 @@ class SopApi {
         const val baseUrl = "https://api.solian.app"
         const val streamUrl = "$baseUrl/ring/notifications/sop/stream"
         private const val TAG = "CloudySkySopApi"
+        private val SENSITIVE_RESPONSE_HEADERS = setOf("Set-Cookie", "Cookie", "Authorization")
     }
 }

@@ -9,8 +9,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.suspendCancellableCoroutine
-import net.openid.appauth.ClientAuthentication
-import net.openid.appauth.ClientSecretPost
 import net.openid.appauth.AuthState
 import net.openid.appauth.AuthorizationException
 import net.openid.appauth.AuthorizationRequest
@@ -28,19 +26,14 @@ class AuthRepository(context: Context) {
     private val store = AuthStateStore(appContext)
     private val sopStore = SopStore(appContext)
     private val accountsApi = AccountsApi()
-    private val clientAuthentication: ClientAuthentication? =
-        AuthConfig.clientSecret.takeIf { it.isNotBlank() }?.let { ClientSecretPost(it) }
 
     private val _authState = MutableStateFlow(store.load())
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
     fun createAuthorizationIntent(): Intent {
         Log.d(TAG, "createAuthorizationIntent: clientId=${AuthConfig.clientId}, redirectUri=${AuthConfig.redirectUri}")
-        if (clientAuthentication == null) {
-            Log.w(TAG, "client secret is empty; token exchange will fail until cloudyskyClientSecret is provided")
-        }
         val request = AuthorizationRequest.Builder(
-            AuthConfig.serviceConfiguration(appContext),
+            AuthConfig.serviceConfiguration,
             AuthConfig.clientId,
             ResponseTypeValues.CODE,
             AuthConfig.redirectUri
@@ -49,7 +42,8 @@ class AuthRepository(context: Context) {
                 AuthConfig.scopeOpenId,
                 AuthConfig.scopeProfile,
                 AuthConfig.scopeEmail,
-                AuthConfig.scopeChatMessagesCreate
+                AuthConfig.scopeChatMessagesCreate,
+                AuthConfig.scopeNotificationsSopSubscribe
             )
             .build()
 
@@ -99,11 +93,7 @@ class AuthRepository(context: Context) {
             }
         }
 
-        if (clientAuthentication != null) {
-            state.performActionWithFreshTokens(authService, clientAuthentication, callback)
-        } else {
-            state.performActionWithFreshTokens(authService, callback)
-        }
+        state.performActionWithFreshTokens(authService, callback)
     }
 
     suspend fun fetchCurrentAccount(): CurrentAccount? {
@@ -133,11 +123,7 @@ class AuthRepository(context: Context) {
             }
         }
 
-        if (clientAuthentication != null) {
-            authService.performTokenRequest(request, clientAuthentication, callback)
-        } else {
-            authService.performTokenRequest(request, callback)
-        }
+        authService.performTokenRequest(request, callback)
     }
 
     private companion object {

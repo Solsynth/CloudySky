@@ -49,7 +49,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
-                    android:scheme="@string/app_auth_redirect_scheme"
+                    android:scheme="cloudysky"
                     android:host="oauth2redirect"
                     android:path="/callback" />
             </intent-filter>

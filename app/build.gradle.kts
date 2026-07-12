@@ -35,11 +35,6 @@ android {
             "OIDC_CLIENT_ID",
             "\"${localProperty("cloudyskyClientId")}\""
         )
-        buildConfigField(
-            "String",
-            "OIDC_CLIENT_SECRET",
-            "\"${localProperty("cloudyskyClientSecret")}\""
-        )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
