@@ -26,8 +26,8 @@ android {
         applicationId = "dev.solsynth.cloudysky"
         minSdk = 28
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
 
         manifestPlaceholders["appAuthRedirectScheme"] = "@string/app_auth_redirect_scheme"
         buildConfigField(
